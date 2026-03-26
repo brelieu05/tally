@@ -19,13 +19,14 @@ function iconFor(name) {
 }
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
+  const datePart = dateStr.slice(0, 10);
+  const d = new Date(datePart + 'T00:00:00');
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (dateStr === today.toISOString().slice(0, 10)) return 'Today';
-  if (dateStr === yesterday.toISOString().slice(0, 10)) return 'Yesterday';
+  if (datePart === today.toISOString().slice(0, 10)) return 'Today';
+  if (datePart === yesterday.toISOString().slice(0, 10)) return 'Yesterday';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
