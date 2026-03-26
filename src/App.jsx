@@ -23,6 +23,34 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [homeDirty, setHomeDirty]   = useState(false);
+  const [splitDirty, setSplitDirty] = useState(false);
+  const [pendingTab, setPendingTab] = useState(null);
+
+  const [pendingSplitView, setPendingSplitView] = useState(null);
+
+  function handleTabChange(newTab) {
+    if (newTab === tab) return;
+    const dirty = (tab === 'home' && homeDirty) || (tab === 'split' && splitDirty && splitView === 'new');
+    if (dirty) { setPendingTab(newTab); return; }
+    setTab(newTab);
+  }
+
+  function handleSplitViewChange(newView) {
+    if (newView === splitView) return;
+    if (splitDirty && splitView === 'new') { setPendingSplitView(newView); return; }
+    setSplitView(newView);
+  }
+
+  function confirmLeave() {
+    if (pendingTab) { setTab(pendingTab); setPendingTab(null); }
+    if (pendingSplitView) { setSplitView(pendingSplitView); setPendingSplitView(null); }
+  }
+
+  function cancelLeave() {
+    setPendingTab(null);
+    setPendingSplitView(null);
+  }
 
   useEffect(() => { if (token) fetchAll(); }, [token]);
 
@@ -96,7 +124,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <span className="app-title">
-          <button className="header-home-btn" onClick={() => setTab('home')}>
+          <button className="header-home-btn" onClick={() => handleTabChange('home')}>
             <img src="/favicon.svg" className="header-logo" alt="" />
             <span className="header-accent">tally</span>
           </button>
@@ -104,7 +132,7 @@ export default function App() {
             <>
               <span className="header-divider">/</span>
               {tab === 'split'
-                ? <button className="header-section-btn" onClick={() => setTab('split')}>{titles[tab]}</button>
+                ? <button className="header-section-btn" onClick={() => handleTabChange('split')}>{titles[tab]}</button>
                 : <span>{titles[tab]}</span>
               }
             </>
@@ -124,6 +152,7 @@ export default function App() {
               categories={categories}
               onAdd={handleAdd}
               onAddCategory={handleAddCategory}
+              onDirtyChange={setHomeDirty}
             />
             <ExpenseList
               expenses={expenses}
@@ -138,21 +167,36 @@ export default function App() {
         {tab === 'split' && (
           <>
             <div className="split-subtabs">
-              <button className={`split-subtab ${splitView === 'new' ? 'active' : ''}`} onClick={() => setSplitView('new')}>New</button>
-              <button className={`split-subtab ${splitView === 'history' ? 'active' : ''}`} onClick={() => setSplitView('history')}>History</button>
+              <button className={`split-subtab ${splitView === 'new' ? 'active' : ''}`} onClick={() => handleSplitViewChange('new')}>New</button>
+              <button className={`split-subtab ${splitView === 'history' ? 'active' : ''}`} onClick={() => handleSplitViewChange('history')}>History</button>
             </div>
-            {splitView === 'new'     && <BillSplitter embedded />}
+            {splitView === 'new'     && <BillSplitter embedded onDirtyChange={setSplitDirty} />}
             {splitView === 'history' && <SplitHistory token={token} />}
           </>
         )}
       </main>
+
+      {(pendingTab || pendingSplitView) && (
+        <div className="modal-overlay" onClick={cancelLeave}>
+          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+            <span className="modal-title">Leave tab?</span>
+            <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>
+              You have unsaved input. If you leave, it will be cleared.
+            </p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={cancelLeave}>Stay</button>
+              <button className="btn-primary" onClick={confirmLeave}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="bottom-nav">
         {tabs.map(({ id, label, icon, activeIcon }) => (
           <button
             key={id}
             className={`nav-btn ${tab === id ? 'active' : ''}`}
-            onClick={() => setTab(id)}
+            onClick={() => handleTabChange(id)}
           >
             <span className="nav-icon">
               <FontAwesomeIcon icon={tab === id ? activeIcon : icon} />

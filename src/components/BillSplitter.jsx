@@ -11,7 +11,7 @@ function getBillId() {
   return parts[2] || null;
 }
 
-export default function BillSplitter({ embedded = false }) {
+export default function BillSplitter({ embedded = false, onDirtyChange }) {
   const [billName, setBillName]   = useState('');
   const [people, setPeople]       = useState([]);
   const [items, setItems]         = useState([]);
@@ -32,6 +32,10 @@ export default function BillSplitter({ embedded = false }) {
   const [copied, setCopied]       = useState(false);
   const [sharing, setSharing]     = useState(false);
   const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(billName !== '' || people.length > 0 || items.length > 0);
+  }, [billName, people, items]);
 
   // Load bill from server if URL has an ID
   useEffect(() => {

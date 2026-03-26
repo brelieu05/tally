@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faCheck } from '@fortawesome/free-solid-svg-icons';
 
@@ -9,12 +9,16 @@ const COLORS = [
   '#3B82F6', '#8B5CF6', '#EC4899', '#6B7280',
 ];
 
-export default function AddExpense({ categories, onAdd, onAddCategory }) {
+export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyChange }) {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(today());
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(amount !== '' || description !== '');
+  }, [amount, description]);
   const [success, setSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -29,6 +33,7 @@ export default function AddExpense({ categories, onAdd, onAddCategory }) {
       setAmount('');
       setDescription('');
       setDate(today());
+      onDirtyChange?.(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 1200);
     } finally {
