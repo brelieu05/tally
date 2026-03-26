@@ -171,8 +171,10 @@ export default function BillSplitter({ embedded = false }) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">People</span>
-          {people.length > 0 && <span className="badge">{people.length}</span>}
-          <div style={{ marginLeft: 'auto' }}>{shareBtn}</div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {people.length > 0 && <span className="badge">{people.length}</span>}
+            {shareBtn}
+          </div>
         </div>
         <div className="card-body">
           <div className="split-row">
@@ -274,7 +276,7 @@ export default function BillSplitter({ embedded = false }) {
           <span className="card-title">Tax & Tip</span>
         </div>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="split-row" style={{ gap: 12 }}>
+          <div className="split-row" style={{ gap: 12, alignItems: 'flex-start' }}>
             {/* Tax */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
