@@ -21,6 +21,9 @@ export default function BillSplitter({ embedded = false }) {
   const [discount, setDiscount]           = useState('');
   const [discountMode, setDiscountMode]   = useState('%');
   const [showDiscount, setShowDiscount]   = useState(false);
+  const [paidBy, setPaidBy]   = useState('');
+  const [venmo, setVenmo]     = useState('');
+  const [zelle, setZelle]     = useState('');
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
@@ -43,6 +46,9 @@ export default function BillSplitter({ embedded = false }) {
         setTipMode(data.tipMode           ?? '%');
         setDiscount(data.discount         ?? '');
         setDiscountMode(data.discountMode ?? '%');
+        setPaidBy(data.paidBy ?? '');
+        setVenmo(data.venmo   ?? '');
+        setZelle(data.zelle   ?? '');
       })
       .catch(() => setLoadError(true));
   }, []);
@@ -97,7 +103,7 @@ export default function BillSplitter({ embedded = false }) {
       const res = await fetch('/api/split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ people, items, tax, taxMode, tip, tipMode, discount, discountMode }),
+        body: JSON.stringify({ people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle }),
       });
       const { id } = await res.json();
       await navigator.clipboard.writeText(`${window.location.origin}/split/${id}`);
@@ -384,6 +390,50 @@ export default function BillSplitter({ embedded = false }) {
         )}
       </div>
 
+      {/* ── Paid by ────────────────────────────────────────── */}
+      {people.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Paid by</span>
+          </div>
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="split-chips" style={{ marginTop: 0 }}>
+              {people.map(p => (
+                <button
+                  key={p}
+                  className={`split-chip split-chip-btn ${paidBy === p ? 'active' : ''}`}
+                  onClick={() => setPaidBy(paidBy === p ? '' : p)}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            {paidBy && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="split-pct-wrap">
+                  <span className="split-payment-prefix">Venmo</span>
+                  <input
+                    className="text-input split-payment-input"
+                    placeholder="@username"
+                    value={venmo}
+                    onChange={e => setVenmo(e.target.value)}
+                  />
+                </div>
+                <div className="split-pct-wrap">
+                  <span className="split-payment-prefix">Zelle</span>
+                  <input
+                    className="text-input split-payment-input"
+                    placeholder="phone or email"
+                    value={zelle}
+                    onChange={e => setZelle(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Summary ────────────────────────────────────────── */}
       {showSummary && (
         <div className="card">
@@ -391,27 +441,53 @@ export default function BillSplitter({ embedded = false }) {
             <span className="card-title">Summary</span>
             <FontAwesomeIcon icon={faScissors} style={{ color: 'var(--text-muted)', fontSize: 14 }} />
           </div>
-          {personTotals.map(p => (
-            <div key={p.name} className="split-person-row">
-              <div className="split-person-avatar">{p.name[0].toUpperCase()}</div>
-              <div className="split-person-info">
-                <div className="split-person-name">{p.name}</div>
-                <div className="split-person-breakdown">
-                  {p.subtotal > 0 ? (
-                    <>
-                      <span>${p.subtotal.toFixed(2)} items</span>
-                      {p.discount > 0 && <span>· −${p.discount.toFixed(2)} disc</span>}
-                      {p.tax > 0 && <span>· +${p.tax.toFixed(2)} tax</span>}
-                      {p.tip > 0 && <span>· +${p.tip.toFixed(2)} tip</span>}
-                    </>
-                  ) : (
-                    <span style={{ color: 'var(--text-muted)' }}>no items assigned</span>
+          {personTotals.map(p => {
+            const isPayer = paidBy === p.name;
+            return (
+              <div key={p.name} className={`split-person-row ${isPayer ? 'split-person-payer' : ''}`}>
+                <div className="split-person-avatar">{p.name[0].toUpperCase()}</div>
+                <div className="split-person-info">
+                  <div className="split-person-name">
+                    {p.name}
+                    {isPayer && <span className="split-payer-tag">paid</span>}
+                  </div>
+                  <div className="split-person-breakdown">
+                    {p.subtotal > 0 ? (
+                      <>
+                        <span>${p.subtotal.toFixed(2)} items</span>
+                        {p.discount > 0 && <span>· −${p.discount.toFixed(2)} disc</span>}
+                        {p.tax > 0 && <span>· +${p.tax.toFixed(2)} tax</span>}
+                        {p.tip > 0 && <span>· +${p.tip.toFixed(2)} tip</span>}
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)' }}>no items assigned</span>
+                    )}
+                  </div>
+                  {!isPayer && paidBy && (venmo || zelle) && p.total > 0 && (
+                    <div className="split-pay-links">
+                      {venmo && (
+                        <a
+                          className="split-pay-btn split-pay-venmo"
+                          href={`https://venmo.com/${venmo.replace(/^@/, '')}?txn=pay&amount=${p.total.toFixed(2)}&note=Bill%20split`}
+                          target="_blank" rel="noreferrer"
+                        >
+                          Venmo {venmo.startsWith('@') ? venmo : `@${venmo}`}
+                        </a>
+                      )}
+                      {zelle && (
+                        <span className="split-pay-btn split-pay-zelle">
+                          Zelle {zelle}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
+                <div className={`split-person-total ${isPayer ? 'split-payer-total' : ''}`}>
+                  {isPayer ? 'covered' : `$${p.total.toFixed(2)}`}
+                </div>
               </div>
-              <div className="split-person-total">${p.total.toFixed(2)}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
