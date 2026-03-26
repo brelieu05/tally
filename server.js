@@ -108,6 +108,19 @@ app.post('/api/login', (req, res) => {
 });
 
 // ── Split bills (no auth) ──────────────────────────────────────
+app.get('/api/split', requireAuth, async (req, res) => {
+  if (isLocal) {
+    const bills = Object.entries(mem.splitBills)
+      .map(([id, { data, created_at }]) => ({ id, data, created_at }))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return res.json(bills);
+  }
+  const { rows } = await pool.query(
+    'SELECT id, data, created_at FROM split_bills ORDER BY created_at DESC'
+  );
+  res.json(rows);
+});
+
 app.post('/api/split', async (req, res) => {
   const data = req.body;
   if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
@@ -115,7 +128,7 @@ app.post('/api/split', async (req, res) => {
   if (isLocal) {
     let id;
     do { id = Math.random().toString(36).slice(2, 8); } while (mem.splitBills[id]);
-    mem.splitBills[id] = data;
+    mem.splitBills[id] = { data, created_at: new Date().toISOString() };
     return res.json({ id });
   }
 
@@ -131,9 +144,9 @@ app.post('/api/split', async (req, res) => {
 
 app.get('/api/split/:id', async (req, res) => {
   if (isLocal) {
-    const data = mem.splitBills[req.params.id];
-    if (!data) return res.status(404).json({ error: 'Not found' });
-    return res.json(data);
+    const entry = mem.splitBills[req.params.id];
+    if (!entry) return res.status(404).json({ error: 'Not found' });
+    return res.json(entry.data);
   }
   const { rows } = await pool.query('SELECT data FROM split_bills WHERE id = $1', [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Not found' });

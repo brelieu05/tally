@@ -8,6 +8,7 @@ import ExpenseList from './components/ExpenseList';
 import WeeklyBreakdown from './components/WeeklyBreakdown';
 import MonthlyBreakdown from './components/MonthlyBreakdown';
 import BillSplitter from './components/BillSplitter';
+import SplitHistory from './components/SplitHistory';
 
 function authHeaders(token) {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -18,6 +19,7 @@ const IS_LOCAL = window.location.hostname === 'localhost';
 export default function App() {
   const [token, setToken]       = useState(() => IS_LOCAL ? 'local' : localStorage.getItem('tally_token'));
   const [tab, setTab]           = useState('home');
+  const [splitView, setSplitView] = useState('new'); // 'new' | 'history'
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -123,7 +125,16 @@ export default function App() {
         )}
         {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} />}
         {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} />}
-        {tab === 'split'   && <BillSplitter embedded />}
+        {tab === 'split' && (
+          <>
+            <div className="split-subtabs">
+              <button className={`split-subtab ${splitView === 'new' ? 'active' : ''}`} onClick={() => setSplitView('new')}>New</button>
+              <button className={`split-subtab ${splitView === 'history' ? 'active' : ''}`} onClick={() => setSplitView('history')}>History</button>
+            </div>
+            {splitView === 'new'     && <BillSplitter embedded />}
+            {splitView === 'history' && <SplitHistory token={token} />}
+          </>
+        )}
       </main>
 
       <nav className="bottom-nav">
