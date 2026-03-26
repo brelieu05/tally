@@ -1,41 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faScissors, faLink, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
 const TIP_PRESETS = [15, 18, 20];
 
-function encodeState(state) {
-  return btoa(encodeURIComponent(JSON.stringify(state)));
-}
-
-function decodeState(str) {
-  try {
-    return JSON.parse(decodeURIComponent(atob(str)));
-  } catch {
-    return null;
-  }
-}
-
-function loadFromUrl() {
-  const param = new URLSearchParams(window.location.search).get('d');
-  if (!param) return null;
-  return decodeState(param);
+// Extract bill ID from path: /split/:id
+function getBillId() {
+  const parts = window.location.pathname.split('/');
+  return parts[2] || null;
 }
 
 export default function BillSplitter({ embedded = false }) {
-  const initial = loadFromUrl();
-
-  const [people, setPeople]       = useState(initial?.people   ?? []);
-  const [items, setItems]         = useState(initial?.items    ?? []);
-  const [tax, setTax]             = useState(initial?.tax      ?? '7.25');
-  const [taxMode, setTaxMode]     = useState(initial?.taxMode  ?? '%');
-  const [tip, setTip]             = useState(initial?.tip      ?? '');
-  const [tipMode, setTipMode]     = useState(initial?.tipMode  ?? '%');
+  const [people, setPeople]       = useState([]);
+  const [items, setItems]         = useState([]);
+  const [tax, setTax]             = useState('7.25');
+  const [taxMode, setTaxMode]     = useState('%');
+  const [tip, setTip]             = useState('');
+  const [tipMode, setTipMode]     = useState('%');
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
   const [copied, setCopied]       = useState(false);
+  const [sharing, setSharing]     = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  // Load bill from server if URL has an ID
+  useEffect(() => {
+    const id = getBillId();
+    if (!id) return;
+    fetch(`/api/split/${id}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        setPeople(data.people   ?? []);
+        setItems(data.items     ?? []);
+        setTax(data.tax         ?? '7.25');
+        setTaxMode(data.taxMode ?? '%');
+        setTip(data.tip         ?? '');
+        setTipMode(data.tipMode ?? '%');
+      })
+      .catch(() => setLoadError(true));
+  }, []);
 
   // ── People ────────────────────────────────────────────────────
   function addPerson() {
@@ -81,14 +86,21 @@ export default function BillSplitter({ embedded = false }) {
   }
 
   // ── Share ─────────────────────────────────────────────────────
-  function copyShareLink() {
-    const state = { people, items, tax, taxMode, tip, tipMode };
-    const encoded = encodeState(state);
-    const url = `${window.location.origin}/split?d=${encoded}`;
-    navigator.clipboard.writeText(url).then(() => {
+  async function copyShareLink() {
+    setSharing(true);
+    try {
+      const res = await fetch('/api/split', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ people, items, tax, taxMode, tip, tipMode }),
+      });
+      const { id } = await res.json();
+      await navigator.clipboard.writeText(`${window.location.origin}/split/${id}`);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+      setTimeout(() => setCopied(false), 2500);
+    } finally {
+      setSharing(false);
+    }
   }
 
   // ── Calculations ──────────────────────────────────────────────
@@ -125,16 +137,21 @@ export default function BillSplitter({ embedded = false }) {
     <button
       className={`split-share-btn ${copied ? 'copied' : ''}`}
       onClick={copyShareLink}
-      disabled={!hasContent}
+      disabled={!hasContent || sharing}
       title="Copy share link"
     >
       <FontAwesomeIcon icon={copied ? faCheck : faLink} />
-      {copied ? 'Copied!' : 'Share'}
+      {sharing ? 'Saving…' : copied ? 'Copied!' : 'Share'}
     </button>
   );
 
   const content = (
     <>
+      {loadError && (
+        <div className="split-load-error">
+          Bill not found — it may have expired or the link is invalid.
+        </div>
+      )}
       {/* ── People ─────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">

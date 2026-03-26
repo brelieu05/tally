@@ -728,6 +728,15 @@ input, textarea, select { font-family: inherit; }
   color: #fff;
 }
 
+.split-load-error {
+  padding: 12px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: #dc2626;
+}
+
 .split-share-btn {
   display: flex;
   align-items: center;

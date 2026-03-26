@@ -8,6 +8,6 @@ const root = createRoot(document.getElementById('root'));
 
 root.render(
   <StrictMode>
-    {window.location.pathname === '/split' ? <BillSplitter /> : <App />}
+    {window.location.pathname.startsWith('/split') ? <BillSplitter /> : <App />}
   </StrictMode>
 );

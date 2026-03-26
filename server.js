@@ -38,6 +38,12 @@ async function initDb() {
       date        DATE NOT NULL,
       created_at  TIMESTAMPTZ DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS split_bills (
+      id         TEXT PRIMARY KEY,
+      data       JSONB NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 
   // Seed default categories
@@ -83,6 +89,28 @@ app.post('/api/login', (req, res) => {
     return res.json({ token });
   }
   res.status(401).json({ error: 'Invalid username or password' });
+});
+
+// ── Split bills (no auth) ─────────────────────────────────────
+app.post('/api/split', async (req, res) => {
+  const data = req.body;
+  if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
+
+  let id, exists;
+  do {
+    id = Math.random().toString(36).slice(2, 8);
+    const { rows } = await pool.query('SELECT id FROM split_bills WHERE id = $1', [id]);
+    exists = rows.length > 0;
+  } while (exists);
+
+  await pool.query('INSERT INTO split_bills (id, data) VALUES ($1, $2)', [id, JSON.stringify(data)]);
+  res.json({ id });
+});
+
+app.get('/api/split/:id', async (req, res) => {
+  const { rows } = await pool.query('SELECT data FROM split_bills WHERE id = $1', [req.params.id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json(rows[0].data);
 });
 
 // ── Categories ────────────────────────────────────────────────
