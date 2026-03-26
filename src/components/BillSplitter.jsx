@@ -171,10 +171,8 @@ export default function BillSplitter({ embedded = false }) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">People</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {people.length > 0 && <span className="badge">{people.length}</span>}
-            {shareBtn}
-          </div>
+          {people.length > 0 && <span className="badge" style={{ marginLeft: 6 }}>{people.length}</span>}
+          <div style={{ marginLeft: 'auto' }}>{shareBtn}</div>
         </div>
         <div className="card-body">
           <div className="split-row">
