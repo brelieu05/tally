@@ -728,6 +728,25 @@ input, textarea, select { font-family: inherit; }
   color: #fff;
 }
 
+.split-mode-toggle {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.split-mode-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface);
+  transition: all 0.12s;
+}
+.split-mode-btn.active {
+  background: var(--orange);
+  color: #fff;
+}
+
 .split-label {
   display: block;
   font-size: 12px;

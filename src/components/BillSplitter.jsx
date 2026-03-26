@@ -9,6 +9,7 @@ export default function BillSplitter({ embedded = false }) {
   const [people, setPeople]         = useState([]);
   const [items, setItems]           = useState([]);
   const [tax, setTax]               = useState('7.25');
+  const [taxMode, setTaxMode]       = useState('%'); // '%' or '$'
   const [tip, setTip]               = useState('');
   const [newPerson, setNewPerson]   = useState('');
   const [newName, setNewName]       = useState('');
@@ -59,7 +60,9 @@ export default function BillSplitter({ embedded = false }) {
 
   // ── Calculations ──────────────────────────────────────────────
   const subtotal = items.reduce((s, i) => s + i.price, 0);
-  const taxAmt   = subtotal * (parseFloat(tax) || 0) / 100;
+  const taxAmt   = taxMode === '$'
+    ? (parseFloat(tax) || 0)
+    : subtotal * (parseFloat(tax) || 0) / 100;
   const tipAmt   = subtotal * (parseFloat(tip) || 0) / 100;
   const grandTotal = subtotal + taxAmt + tipAmt;
 
@@ -193,18 +196,31 @@ export default function BillSplitter({ embedded = false }) {
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="split-row" style={{ gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <label className="split-label">Tax %</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label className="split-label" style={{ marginBottom: 0 }}>Tax</label>
+                  <div className="split-mode-toggle">
+                    <button
+                      className={`split-mode-btn ${taxMode === '%' ? 'active' : ''}`}
+                      onClick={() => { setTaxMode('%'); setTax('7.25'); }}
+                    >%</button>
+                    <button
+                      className={`split-mode-btn ${taxMode === '$' ? 'active' : ''}`}
+                      onClick={() => { setTaxMode('$'); setTax(''); }}
+                    >$</button>
+                  </div>
+                </div>
                 <div className="split-pct-wrap">
+                  {taxMode === '$' && <span className="split-price-sym">$</span>}
                   <input
-                    className="text-input"
+                    className={`text-input${taxMode === '$' ? ' split-price-input' : ''}`}
                     type="number"
                     min="0"
-                    step="0.1"
+                    step={taxMode === '%' ? '0.1' : '0.01'}
                     placeholder="0"
                     value={tax}
                     onChange={e => setTax(e.target.value)}
                   />
-                  <span className="split-pct-sym">%</span>
+                  {taxMode === '%' && <span className="split-pct-sym">%</span>}
                 </div>
               </div>
               <div style={{ flex: 1 }}>
@@ -242,7 +258,7 @@ export default function BillSplitter({ embedded = false }) {
                 <span className="split-totals-value">${subtotal.toFixed(2)}</span>
                 {taxAmt > 0 && (
                   <>
-                    <span className="split-totals-label">Tax ({tax}%)</span>
+                    <span className="split-totals-label">Tax {taxMode === '%' ? `(${tax}%)` : '(flat)'}</span>
                     <span className="split-totals-value">+${taxAmt.toFixed(2)}</span>
                   </>
                 )}
