@@ -500,10 +500,12 @@ export default function BillSplitter({ embedded = false }) {
     <div className="app">
       <header className="app-header">
         <span className="app-title">
-          <img src="/favicon.svg" className="header-logo" alt="" />
-          <span className="header-accent">tally</span>
+          <a className="header-home-btn" href="/">
+            <img src="/favicon.svg" className="header-logo" alt="" />
+            <span className="header-accent">tally</span>
+          </a>
           <span className="header-divider">/</span>
-          split
+          <a className="header-section-btn" href="/?tab=split">split</a>
         </span>
       </header>
       <main className="app-main">{content}</main>

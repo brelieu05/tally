@@ -18,7 +18,7 @@ const IS_LOCAL = window.location.hostname === 'localhost';
 
 export default function App() {
   const [token, setToken]       = useState(() => IS_LOCAL ? 'local' : localStorage.getItem('tally_token'));
-  const [tab, setTab]           = useState('home');
+  const [tab, setTab]           = useState(() => new URLSearchParams(window.location.search).get('tab') || 'home');
   const [splitView, setSplitView] = useState('new'); // 'new' | 'history'
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -96,9 +96,19 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <span className="app-title">
-          <img src="/favicon.svg" className="header-logo" alt="" />
-          <span className="header-accent">tally</span>
-          {tab !== 'home' && <><span className="header-divider">/</span>{titles[tab]}</>}
+          <button className="header-home-btn" onClick={() => setTab('home')}>
+            <img src="/favicon.svg" className="header-logo" alt="" />
+            <span className="header-accent">tally</span>
+          </button>
+          {tab !== 'home' && (
+            <>
+              <span className="header-divider">/</span>
+              {tab === 'split'
+                ? <button className="header-section-btn" onClick={() => setTab('split')}>{titles[tab]}</button>
+                : <span>{titles[tab]}</span>
+              }
+            </>
+          )}
         </span>
         {!IS_LOCAL && (
           <button className="logout-btn" onClick={handleLogout} title="Sign out">
