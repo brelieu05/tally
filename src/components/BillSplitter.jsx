@@ -18,8 +18,9 @@ export default function BillSplitter({ embedded = false }) {
   const [taxMode, setTaxMode]     = useState('%');
   const [tip, setTip]             = useState('');
   const [tipMode, setTipMode]     = useState('%');
-  const [discount, setDiscount]       = useState('');
-  const [discountMode, setDiscountMode] = useState('%');
+  const [discount, setDiscount]           = useState('');
+  const [discountMode, setDiscountMode]   = useState('%');
+  const [showDiscount, setShowDiscount]   = useState(false);
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
@@ -274,105 +275,85 @@ export default function BillSplitter({ embedded = false }) {
         </div>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="split-row" style={{ gap: 12 }}>
+            {/* Tax */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <label className="split-label" style={{ marginBottom: 0 }}>Tax</label>
                 <div className="split-mode-toggle">
-                  <button
-                    className={`split-mode-btn ${taxMode === '%' ? 'active' : ''}`}
-                    onClick={() => { setTaxMode('%'); setTax('7.25'); }}
-                  >%</button>
-                  <button
-                    className={`split-mode-btn ${taxMode === '$' ? 'active' : ''}`}
-                    onClick={() => { setTaxMode('$'); setTax(''); }}
-                  >$</button>
+                  <button className={`split-mode-btn ${taxMode === '%' ? 'active' : ''}`} onClick={() => { setTaxMode('%'); setTax('7.25'); }}>%</button>
+                  <button className={`split-mode-btn ${taxMode === '$' ? 'active' : ''}`} onClick={() => { setTaxMode('$'); setTax(''); }}>$</button>
                 </div>
               </div>
               <div className="split-pct-wrap">
                 {taxMode === '$' && <span className="split-price-sym">$</span>}
                 <input
                   className={`text-input${taxMode === '$' ? ' split-price-input' : ''}`}
-                  type="number"
-                  min="0"
-                  step={taxMode === '%' ? '0.1' : '0.01'}
-                  placeholder="0"
-                  value={tax}
-                  onChange={e => setTax(e.target.value)}
+                  type="number" min="0" step={taxMode === '%' ? '0.1' : '0.01'} placeholder="0"
+                  value={tax} onChange={e => setTax(e.target.value)}
                 />
                 {taxMode === '%' && <span className="split-pct-sym">%</span>}
               </div>
             </div>
+            {/* Tip */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <label className="split-label" style={{ marginBottom: 0 }}>Tip</label>
                 <div className="split-mode-toggle">
-                  <button
-                    className={`split-mode-btn ${tipMode === '%' ? 'active' : ''}`}
-                    onClick={() => { setTipMode('%'); setTip(''); }}
-                  >%</button>
-                  <button
-                    className={`split-mode-btn ${tipMode === '$' ? 'active' : ''}`}
-                    onClick={() => { setTipMode('$'); setTip(''); }}
-                  >$</button>
+                  <button className={`split-mode-btn ${tipMode === '%' ? 'active' : ''}`} onClick={() => { setTipMode('%'); setTip(''); }}>%</button>
+                  <button className={`split-mode-btn ${tipMode === '$' ? 'active' : ''}`} onClick={() => { setTipMode('$'); setTip(''); }}>$</button>
                 </div>
               </div>
               <div className="split-pct-wrap">
                 {tipMode === '$' && <span className="split-price-sym">$</span>}
                 <input
                   className={`text-input${tipMode === '$' ? ' split-price-input' : ''}`}
-                  type="number"
-                  min="0"
-                  step={tipMode === '%' ? '1' : '0.01'}
-                  placeholder="0"
-                  value={tip}
-                  onChange={e => setTip(e.target.value)}
+                  type="number" min="0" step={tipMode === '%' ? '1' : '0.01'} placeholder="0"
+                  value={tip} onChange={e => setTip(e.target.value)}
                 />
                 {tipMode === '%' && <span className="split-pct-sym">%</span>}
               </div>
+              {tipMode === '%' && (
+                <div className="split-tip-presets-inline">
+                  {TIP_PRESETS.map(pct => (
+                    <button
+                      key={pct}
+                      className={`split-preset-sm ${tip === String(pct) ? 'active' : ''}`}
+                      onClick={() => setTip(tip === String(pct) ? '' : String(pct))}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Discount row */}
+          {/* Discount — collapsed by default */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <label className="split-label" style={{ marginBottom: 0 }}>Discount</label>
-              <div className="split-mode-toggle">
-                <button
-                  className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`}
-                  onClick={() => { setDiscountMode('%'); setDiscount(''); }}
-                >%</button>
-                <button
-                  className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`}
-                  onClick={() => { setDiscountMode('$'); setDiscount(''); }}
-                >$</button>
+            <button className="split-discount-toggle" onClick={() => setShowDiscount(v => !v)}>
+              <span>{showDiscount ? '▾' : '▸'} Discount</span>
+              {discountAmt > 0 && <span className="split-discount-badge">−${discountAmt.toFixed(2)}</span>}
+            </button>
+            {showDiscount && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 6 }}>
+                  <div className="split-mode-toggle">
+                    <button className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`} onClick={() => { setDiscountMode('%'); setDiscount(''); }}>%</button>
+                    <button className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`} onClick={() => { setDiscountMode('$'); setDiscount(''); }}>$</button>
+                  </div>
+                </div>
+                <div className="split-pct-wrap">
+                  {discountMode === '$' && <span className="split-price-sym">$</span>}
+                  <input
+                    className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
+                    type="number" min="0" step={discountMode === '%' ? '0.1' : '0.01'} placeholder="0"
+                    value={discount} onChange={e => setDiscount(e.target.value)}
+                  />
+                  {discountMode === '%' && <span className="split-pct-sym">%</span>}
+                </div>
               </div>
-            </div>
-            <div className="split-pct-wrap">
-              {discountMode === '$' && <span className="split-price-sym">$</span>}
-              <input
-                className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
-                type="number"
-                min="0"
-                step={discountMode === '%' ? '0.1' : '0.01'}
-                placeholder="0"
-                value={discount}
-                onChange={e => setDiscount(e.target.value)}
-              />
-              {discountMode === '%' && <span className="split-pct-sym">%</span>}
-            </div>
+            )}
           </div>
-
-          {tipMode === '%' && <div className="split-tip-presets">
-            {TIP_PRESETS.map(pct => (
-              <button
-                key={pct}
-                className={`split-preset-btn ${tip === String(pct) ? 'active' : ''}`}
-                onClick={() => setTip(tip === String(pct) ? '' : String(pct))}
-              >
-                {pct}%
-              </button>
-            ))}
-          </div>}
 
           {subtotal > 0 && (
             <div className="split-totals-grid">
