@@ -19,11 +19,6 @@ export default function BillSplitter({ embedded = false }) {
     const name = newPerson.trim();
     if (!name || people.includes(name)) return;
     setPeople(prev => [...prev, name]);
-    // auto-assign existing items to new person
-    setItems(prev => prev.map(item => ({
-      ...item,
-      assignedTo: [...item.assignedTo, name],
-    })));
     setNewPerson('');
   }
 
@@ -40,7 +35,7 @@ export default function BillSplitter({ embedded = false }) {
     const name = newName.trim();
     const price = parseFloat(newPrice);
     if (!name || isNaN(price) || price <= 0) return;
-    setItems(prev => [...prev, { id: Date.now(), name, price, assignedTo: [...people] }]);
+    setItems(prev => [...prev, { id: Date.now(), name, price, assignedTo: [] }]);
     setNewName('');
     setNewPrice('');
   }
