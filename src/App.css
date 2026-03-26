@@ -835,6 +835,7 @@ input, textarea, select { font-family: inherit; }
 }
 .split-totals-label { font-size: 13px; color: var(--text-muted); }
 .split-totals-value { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; }
+.split-totals-discount { color: var(--green); }
 .split-grand-label  { font-size: 14px; font-weight: 700; color: var(--text); }
 .split-grand-value  { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; text-align: right; }
 

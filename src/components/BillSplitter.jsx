@@ -18,6 +18,8 @@ export default function BillSplitter({ embedded = false }) {
   const [taxMode, setTaxMode]     = useState('%');
   const [tip, setTip]             = useState('');
   const [tipMode, setTipMode]     = useState('%');
+  const [discount, setDiscount]       = useState('');
+  const [discountMode, setDiscountMode] = useState('%');
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
@@ -36,8 +38,10 @@ export default function BillSplitter({ embedded = false }) {
         setItems(data.items     ?? []);
         setTax(data.tax         ?? '7.25');
         setTaxMode(data.taxMode ?? '%');
-        setTip(data.tip         ?? '');
-        setTipMode(data.tipMode ?? '%');
+        setTip(data.tip                   ?? '');
+        setTipMode(data.tipMode           ?? '%');
+        setDiscount(data.discount         ?? '');
+        setDiscountMode(data.discountMode ?? '%');
       })
       .catch(() => setLoadError(true));
   }, []);
@@ -92,7 +96,7 @@ export default function BillSplitter({ embedded = false }) {
       const res = await fetch('/api/split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ people, items, tax, taxMode, tip, tipMode }),
+        body: JSON.stringify({ people, items, tax, taxMode, tip, tipMode, discount, discountMode }),
       });
       const { id } = await res.json();
       await navigator.clipboard.writeText(`${window.location.origin}/split/${id}`);
@@ -104,29 +108,39 @@ export default function BillSplitter({ embedded = false }) {
   }
 
   // ── Calculations ──────────────────────────────────────────────
-  const subtotal   = items.reduce((s, i) => s + i.price, 0);
-  const taxAmt     = taxMode === '$'
+  const subtotal     = items.reduce((s, i) => s + i.price, 0);
+  const discountAmt  = Math.min(
+    discountMode === '$'
+      ? (parseFloat(discount) || 0)
+      : subtotal * (parseFloat(discount) || 0) / 100,
+    subtotal
+  );
+  const discounted   = subtotal - discountAmt;
+  const taxAmt       = taxMode === '$'
     ? (parseFloat(tax) || 0)
-    : subtotal * (parseFloat(tax) || 0) / 100;
-  const tipAmt     = tipMode === '$'
+    : discounted * (parseFloat(tax) || 0) / 100;
+  const tipAmt       = tipMode === '$'
     ? (parseFloat(tip) || 0)
-    : subtotal * (parseFloat(tip) || 0) / 100;
-  const grandTotal = subtotal + taxAmt + tipAmt;
+    : discounted * (parseFloat(tip) || 0) / 100;
+  const grandTotal   = discounted + taxAmt + tipAmt;
 
   const personTotals = people.map(person => {
     const personSub = items.reduce((s, item) => {
       if (!item.assignedTo.includes(person) || item.assignedTo.length === 0) return s;
       return s + item.price / item.assignedTo.length;
     }, 0);
-    const share     = subtotal > 0 ? personSub / subtotal : 0;
-    const personTax = share * taxAmt;
-    const personTip = share * tipAmt;
+    const share           = subtotal > 0 ? personSub / subtotal : 0;
+    const personDiscount  = share * discountAmt;
+    const personDiscounted = personSub - personDiscount;
+    const personTax       = share * taxAmt;
+    const personTip       = share * tipAmt;
     return {
       name: person,
       subtotal: personSub,
+      discount: personDiscount,
       tax: personTax,
       tip: personTip,
-      total: personSub + personTax + personTip,
+      total: personDiscounted + personTax + personTip,
     };
   });
 
@@ -318,6 +332,36 @@ export default function BillSplitter({ embedded = false }) {
             </div>
           </div>
 
+          {/* Discount row */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label className="split-label" style={{ marginBottom: 0 }}>Discount</label>
+              <div className="split-mode-toggle">
+                <button
+                  className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`}
+                  onClick={() => { setDiscountMode('%'); setDiscount(''); }}
+                >%</button>
+                <button
+                  className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`}
+                  onClick={() => { setDiscountMode('$'); setDiscount(''); }}
+                >$</button>
+              </div>
+            </div>
+            <div className="split-pct-wrap">
+              {discountMode === '$' && <span className="split-price-sym">$</span>}
+              <input
+                className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
+                type="number"
+                min="0"
+                step={discountMode === '%' ? '0.1' : '0.01'}
+                placeholder="0"
+                value={discount}
+                onChange={e => setDiscount(e.target.value)}
+              />
+              {discountMode === '%' && <span className="split-pct-sym">%</span>}
+            </div>
+          </div>
+
           {tipMode === '%' && <div className="split-tip-presets">
             {TIP_PRESETS.map(pct => (
               <button
@@ -334,6 +378,12 @@ export default function BillSplitter({ embedded = false }) {
             <div className="split-totals-grid">
               <span className="split-totals-label">Subtotal</span>
               <span className="split-totals-value">${subtotal.toFixed(2)}</span>
+              {discountAmt > 0 && (
+                <>
+                  <span className="split-totals-label">Discount {discountMode === '%' ? `(${discount}%)` : '(flat)'}</span>
+                  <span className="split-totals-value split-totals-discount">−${discountAmt.toFixed(2)}</span>
+                </>
+              )}
               {taxAmt > 0 && (
                 <>
                   <span className="split-totals-label">Tax {taxMode === '%' ? `(${tax}%)` : '(flat)'}</span>
@@ -369,6 +419,7 @@ export default function BillSplitter({ embedded = false }) {
                   {p.subtotal > 0 ? (
                     <>
                       <span>${p.subtotal.toFixed(2)} items</span>
+                      {p.discount > 0 && <span>· −${p.discount.toFixed(2)} disc</span>}
                       {p.tax > 0 && <span>· +${p.tax.toFixed(2)} tax</span>}
                       {p.tip > 0 && <span>· +${p.tip.toFixed(2)} tip</span>}
                     </>
