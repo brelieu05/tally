@@ -103,6 +103,20 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
     }));
   }
 
+  // ── Auto-save when share link exists ──────────────────────────
+  useEffect(() => {
+    if (!shareId) return;
+    const payload = { billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle };
+    const timer = setTimeout(() => {
+      fetch(`/api/split/${shareId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [shareId, billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle]);
+
   // ── Share ─────────────────────────────────────────────────────
   async function copyShareLink() {
     setSharing(true);
