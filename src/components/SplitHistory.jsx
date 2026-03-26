@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLink, faCheck, faArrowUpRightFromSquare, faReceipt } from '@fortawesome/free-solid-svg-icons';
+import { faLink, faCheck, faArrowUpRightFromSquare, faReceipt, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -41,7 +41,8 @@ function billSummary(data) {
 export default function SplitHistory({ token }) {
   const [bills, setBills]     = useState([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied]   = useState(null); // id of copied bill
+  const [copied, setCopied]   = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
     fetch('/api/split', { headers: { Authorization: `Bearer ${token}` } })
@@ -50,6 +51,13 @@ export default function SplitHistory({ token }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [token]);
+
+  async function deleteBill(id) {
+    setDeleting(id);
+    await fetch(`/api/split/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    setBills(prev => prev.filter(b => b.id !== id));
+    setDeleting(null);
+  }
 
   function copyLink(id) {
     navigator.clipboard.writeText(`${window.location.origin}/split/${id}`).then(() => {
@@ -115,6 +123,14 @@ export default function SplitHistory({ token }) {
               >
                 <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
               </a>
+              <button
+                className="split-history-btn split-history-delete"
+                onClick={() => deleteBill(id)}
+                disabled={deleting === id}
+                title="Delete"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </button>
             </div>
           </div>
         );

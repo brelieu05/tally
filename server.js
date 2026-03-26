@@ -142,6 +142,15 @@ app.post('/api/split', async (req, res) => {
   res.json({ id });
 });
 
+app.delete('/api/split/:id', requireAuth, async (req, res) => {
+  if (isLocal) {
+    delete mem.splitBills[req.params.id];
+    return res.json({ success: true });
+  }
+  await pool.query('DELETE FROM split_bills WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
+});
+
 app.get('/api/split/:id', async (req, res) => {
   if (isLocal) {
     const entry = mem.splitBills[req.params.id];

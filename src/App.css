@@ -829,6 +829,7 @@ input, textarea, select { font-family: inherit; }
 }
 .split-history-btn:hover { color: var(--orange); border-color: var(--orange-border); background: var(--orange-light); }
 .split-history-btn.copied { color: #16a34a; border-color: #86efac; background: #dcfce7; }
+.split-history-delete:hover { color: var(--red) !important; border-color: #fecaca !important; background: #fef2f2 !important; }
 
 .split-name-input {
   width: 100%;
