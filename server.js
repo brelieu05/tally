@@ -142,6 +142,19 @@ app.post('/api/split', async (req, res) => {
   res.json({ id });
 });
 
+app.put('/api/split/:id', async (req, res) => {
+  const data = req.body;
+  if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
+  if (isLocal) {
+    if (!mem.splitBills[req.params.id]) return res.status(404).json({ error: 'Not found' });
+    mem.splitBills[req.params.id].data = data;
+    return res.json({ id: req.params.id });
+  }
+  const { rowCount } = await pool.query('UPDATE split_bills SET data = $1 WHERE id = $2', [JSON.stringify(data), req.params.id]);
+  if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ id: req.params.id });
+});
+
 app.delete('/api/split/:id', requireAuth, async (req, res) => {
   if (isLocal) {
     delete mem.splitBills[req.params.id];

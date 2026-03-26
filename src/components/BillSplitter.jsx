@@ -28,6 +28,7 @@ export default function BillSplitter({ embedded = false }) {
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
+  const [shareId, setShareId]     = useState(getBillId); // reuse if already shared
   const [copied, setCopied]       = useState(false);
   const [sharing, setSharing]     = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -102,12 +103,27 @@ export default function BillSplitter({ embedded = false }) {
   async function copyShareLink() {
     setSharing(true);
     try {
-      const res = await fetch('/api/split', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle }),
-      });
-      const { id } = await res.json();
+      const payload = { billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle };
+      let id = shareId;
+      if (id) {
+        // Update existing record
+        const res = await fetch(`/api/split/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) id = null; // fallback to new if not found
+      }
+      if (!id) {
+        const res = await fetch('/api/split', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        id = data.id;
+        setShareId(id);
+      }
       await navigator.clipboard.writeText(`${window.location.origin}/split/${id}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
