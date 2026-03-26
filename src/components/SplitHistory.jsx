@@ -85,8 +85,11 @@ export default function SplitHistory({ token }) {
           <div key={id} className="split-history-row">
             <div className="split-history-info">
               <div className="split-history-people">
-                {people.length > 0 ? people.join(', ') : <span style={{ color: 'var(--text-muted)' }}>No people</span>}
+                {data.billName || (people.length > 0 ? people.join(', ') : <span style={{ color: 'var(--text-muted)' }}>Unnamed split</span>)}
               </div>
+              {data.billName && people.length > 0 && (
+                <div className="split-history-subtitle">{people.join(', ')}</div>
+              )}
               <div className="split-history-meta">
                 <span>${total.toFixed(2)}</span>
                 <span className="expense-dot">·</span>

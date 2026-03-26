@@ -12,6 +12,7 @@ function getBillId() {
 }
 
 export default function BillSplitter({ embedded = false }) {
+  const [billName, setBillName]   = useState('');
   const [people, setPeople]       = useState([]);
   const [items, setItems]         = useState([]);
   const [tax, setTax]             = useState('7.25');
@@ -38,6 +39,7 @@ export default function BillSplitter({ embedded = false }) {
     fetch(`/api/split/${id}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
+        setBillName(data.billName ?? '');
         setPeople(data.people   ?? []);
         setItems(data.items     ?? []);
         setTax(data.tax         ?? '7.25');
@@ -103,7 +105,7 @@ export default function BillSplitter({ embedded = false }) {
       const res = await fetch('/api/split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle }),
+        body: JSON.stringify({ billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle }),
       });
       const { id } = await res.json();
       await navigator.clipboard.writeText(`${window.location.origin}/split/${id}`);
@@ -173,6 +175,12 @@ export default function BillSplitter({ embedded = false }) {
           Bill not found — it may have expired or the link is invalid.
         </div>
       )}
+      <input
+        className="split-name-input"
+        placeholder="Name this split…"
+        value={billName}
+        onChange={e => setBillName(e.target.value)}
+      />
       {/* ── People ─────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
