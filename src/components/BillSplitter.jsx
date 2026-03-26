@@ -166,12 +166,12 @@ export default function BillSplitter({ embedded = false }) {
           Bill not found — it may have expired or the link is invalid.
         </div>
       )}
-      {embedded && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{shareBtn}</div>}
       {/* ── People ─────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
           <span className="card-title">People</span>
           {people.length > 0 && <span className="badge">{people.length}</span>}
+          <div style={{ marginLeft: 'auto' }}>{shareBtn}</div>
         </div>
         <div className="card-body">
           <div className="split-row">
@@ -448,7 +448,6 @@ export default function BillSplitter({ embedded = false }) {
           <span className="header-divider">/</span>
           split
         </span>
-        {shareBtn}
       </header>
       <main className="app-main">{content}</main>
     </div>
