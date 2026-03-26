@@ -31,6 +31,7 @@ export default function BillSplitter({ embedded = false }) {
   const [tax, setTax]             = useState(initial?.tax      ?? '7.25');
   const [taxMode, setTaxMode]     = useState(initial?.taxMode  ?? '%');
   const [tip, setTip]             = useState(initial?.tip      ?? '');
+  const [tipMode, setTipMode]     = useState(initial?.tipMode  ?? '%');
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
@@ -81,7 +82,7 @@ export default function BillSplitter({ embedded = false }) {
 
   // ── Share ─────────────────────────────────────────────────────
   function copyShareLink() {
-    const state = { people, items, tax, taxMode, tip };
+    const state = { people, items, tax, taxMode, tip, tipMode };
     const encoded = encodeState(state);
     const url = `${window.location.origin}/split?d=${encoded}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -95,7 +96,9 @@ export default function BillSplitter({ embedded = false }) {
   const taxAmt     = taxMode === '$'
     ? (parseFloat(tax) || 0)
     : subtotal * (parseFloat(tax) || 0) / 100;
-  const tipAmt     = subtotal * (parseFloat(tip) || 0) / 100;
+  const tipAmt     = tipMode === '$'
+    ? (parseFloat(tip) || 0)
+    : subtotal * (parseFloat(tip) || 0) / 100;
   const grandTotal = subtotal + taxAmt + tipAmt;
 
   const personTotals = people.map(person => {
@@ -268,23 +271,36 @@ export default function BillSplitter({ embedded = false }) {
               </div>
             </div>
             <div style={{ flex: 1 }}>
-              <label className="split-label">Tip %</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <label className="split-label" style={{ marginBottom: 0 }}>Tip</label>
+                <div className="split-mode-toggle">
+                  <button
+                    className={`split-mode-btn ${tipMode === '%' ? 'active' : ''}`}
+                    onClick={() => { setTipMode('%'); setTip(''); }}
+                  >%</button>
+                  <button
+                    className={`split-mode-btn ${tipMode === '$' ? 'active' : ''}`}
+                    onClick={() => { setTipMode('$'); setTip(''); }}
+                  >$</button>
+                </div>
+              </div>
               <div className="split-pct-wrap">
+                {tipMode === '$' && <span className="split-price-sym">$</span>}
                 <input
-                  className="text-input"
+                  className={`text-input${tipMode === '$' ? ' split-price-input' : ''}`}
                   type="number"
                   min="0"
-                  step="1"
+                  step={tipMode === '%' ? '1' : '0.01'}
                   placeholder="0"
                   value={tip}
                   onChange={e => setTip(e.target.value)}
                 />
-                <span className="split-pct-sym">%</span>
+                {tipMode === '%' && <span className="split-pct-sym">%</span>}
               </div>
             </div>
           </div>
 
-          <div className="split-tip-presets">
+          {tipMode === '%' && <div className="split-tip-presets">
             {TIP_PRESETS.map(pct => (
               <button
                 key={pct}
@@ -294,7 +310,7 @@ export default function BillSplitter({ embedded = false }) {
                 {pct}%
               </button>
             ))}
-          </div>
+          </div>}
 
           {subtotal > 0 && (
             <div className="split-totals-grid">
@@ -308,7 +324,7 @@ export default function BillSplitter({ embedded = false }) {
               )}
               {tipAmt > 0 && (
                 <>
-                  <span className="split-totals-label">Tip ({tip}%)</span>
+                  <span className="split-totals-label">Tip {tipMode === '%' ? `(${tip}%)` : '(flat)'}</span>
                   <span className="split-totals-value">+${tipAmt.toFixed(2)}</span>
                 </>
               )}
