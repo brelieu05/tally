@@ -823,19 +823,10 @@ input, textarea, select { font-family: inherit; }
 .split-preset-sm.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 
 .split-discount-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 6px 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  transition: color 0.12s;
+  text-align: left;
+  transition: background 0.12s;
 }
-.split-discount-toggle:hover { color: var(--text); }
+.split-discount-toggle:hover { background: var(--surface-2); }
 .split-discount-badge {
   font-size: 12px;
   font-weight: 700;

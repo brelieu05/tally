@@ -328,33 +328,6 @@ export default function BillSplitter({ embedded = false }) {
             </div>
           </div>
 
-          {/* Discount — collapsed by default */}
-          <div>
-            <button className="split-discount-toggle" onClick={() => setShowDiscount(v => !v)}>
-              <span>{showDiscount ? '▾' : '▸'} Discount</span>
-              {discountAmt > 0 && <span className="split-discount-badge">−${discountAmt.toFixed(2)}</span>}
-            </button>
-            {showDiscount && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 6 }}>
-                  <div className="split-mode-toggle">
-                    <button className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`} onClick={() => { setDiscountMode('%'); setDiscount(''); }}>%</button>
-                    <button className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`} onClick={() => { setDiscountMode('$'); setDiscount(''); }}>$</button>
-                  </div>
-                </div>
-                <div className="split-pct-wrap">
-                  {discountMode === '$' && <span className="split-price-sym">$</span>}
-                  <input
-                    className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
-                    type="number" min="0" step={discountMode === '%' ? '0.1' : '0.01'} placeholder="0"
-                    value={discount} onChange={e => setDiscount(e.target.value)}
-                  />
-                  {discountMode === '%' && <span className="split-pct-sym">%</span>}
-                </div>
-              </div>
-            )}
-          </div>
-
           {subtotal > 0 && (
             <div className="split-totals-grid">
               <span className="split-totals-label">Subtotal</span>
@@ -382,6 +355,33 @@ export default function BillSplitter({ embedded = false }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Discount ───────────────────────────────────────── */}
+      <div className="card">
+        <button className="split-discount-toggle card-header" style={{ width: '100%' }} onClick={() => setShowDiscount(v => !v)}>
+          <span className="card-title">{showDiscount ? '▾' : '▸'} Discount</span>
+          {discountAmt > 0 && <span className="split-discount-badge">−${discountAmt.toFixed(2)}</span>}
+        </button>
+        {showDiscount && (
+          <div className="card-body">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <div className="split-mode-toggle">
+                <button className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`} onClick={() => { setDiscountMode('%'); setDiscount(''); }}>%</button>
+                <button className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`} onClick={() => { setDiscountMode('$'); setDiscount(''); }}>$</button>
+              </div>
+            </div>
+            <div className="split-pct-wrap">
+              {discountMode === '$' && <span className="split-price-sym">$</span>}
+              <input
+                className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
+                type="number" min="0" step={discountMode === '%' ? '0.1' : '0.01'} placeholder="0"
+                value={discount} onChange={e => setDiscount(e.target.value)}
+              />
+              {discountMode === '%' && <span className="split-pct-sym">%</span>}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Summary ────────────────────────────────────────── */}
