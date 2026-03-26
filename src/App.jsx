@@ -13,8 +13,10 @@ function authHeaders(token) {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+const IS_LOCAL = window.location.hostname === 'localhost';
+
 export default function App() {
-  const [token, setToken]       = useState(() => localStorage.getItem('tally_token'));
+  const [token, setToken]       = useState(() => IS_LOCAL ? 'local' : localStorage.getItem('tally_token'));
   const [tab, setTab]           = useState('home');
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -41,7 +43,7 @@ export default function App() {
   }
 
   function handleLogin(newToken) {
-    localStorage.setItem('tally_token', newToken);
+    if (!IS_LOCAL) localStorage.setItem('tally_token', newToken);
     setToken(newToken);
   }
 
@@ -96,9 +98,11 @@ export default function App() {
           <span className="header-accent">tally</span>
           {tab !== 'home' && <><span className="header-divider">/</span>{titles[tab]}</>}
         </span>
-        <button className="logout-btn" onClick={handleLogout} title="Sign out">
-          <FontAwesomeIcon icon={faArrowRightFromBracket} />
-        </button>
+        {!IS_LOCAL && (
+          <button className="logout-btn" onClick={handleLogout} title="Sign out">
+            <FontAwesomeIcon icon={faArrowRightFromBracket} />
+          </button>
+        )}
       </header>
 
       <main className="app-main">
