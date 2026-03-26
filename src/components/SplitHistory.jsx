@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLink, faCheck, faArrowUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
-import { faReceipt } from '@fortawesome/free-regular-svg-icons';
+import { faLink, faCheck, faArrowUpRightFromSquare, faReceipt } from '@fortawesome/free-solid-svg-icons';
 
 function formatDate(iso) {
   const d = new Date(iso);
