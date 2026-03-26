@@ -152,6 +152,7 @@ export default function BillSplitter({ embedded = false }) {
           Bill not found — it may have expired or the link is invalid.
         </div>
       )}
+      {embedded && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{shareBtn}</div>}
       {/* ── People ─────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
@@ -382,8 +383,6 @@ export default function BillSplitter({ embedded = false }) {
         </div>
       )}
 
-      {/* ── Share button (embedded bottom) ─────────────────── */}
-      {embedded && <div style={{ display: 'flex', justifyContent: 'center' }}>{shareBtn}</div>}
     </>
   );
 
