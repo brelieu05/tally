@@ -728,6 +728,32 @@ input, textarea, select { font-family: inherit; }
   color: #fff;
 }
 
+.split-share-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--orange-border);
+  background: var(--orange-light);
+  color: var(--orange-hover);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.12s;
+}
+.split-share-btn:hover:not(:disabled) {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: #fff;
+}
+.split-share-btn.copied {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #16a34a;
+}
+.split-share-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .split-mode-toggle {
   display: flex;
   border: 1.5px solid var(--border);
