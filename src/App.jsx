@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faCalendarDays, faArrowRightFromBracket } from '@fortawesome/free-solid-svg-icons';
+import { faHouse, faCalendarDays, faArrowRightFromBracket, faScissors } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar, faChartBar } from '@fortawesome/free-regular-svg-icons';
 import Login from './components/Login';
 import AddExpense from './components/AddExpense';
 import ExpenseList from './components/ExpenseList';
 import WeeklyBreakdown from './components/WeeklyBreakdown';
 import MonthlyBreakdown from './components/MonthlyBreakdown';
+import BillSplitter from './components/BillSplitter';
 
 function authHeaders(token) {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -82,9 +83,10 @@ export default function App() {
     { id: 'home',    label: 'Home',    icon: faHouse,      activeIcon: faHouse },
     { id: 'weekly',  label: 'Weekly',  icon: faCalendar,   activeIcon: faCalendarDays },
     { id: 'monthly', label: 'Monthly', icon: faChartBar,   activeIcon: faChartBar },
+    { id: 'split',   label: 'Split',   icon: faScissors,   activeIcon: faScissors },
   ];
 
-  const titles = { home: 'tally', weekly: 'weekly', monthly: 'monthly' };
+  const titles = { home: 'tally', weekly: 'weekly', monthly: 'monthly', split: 'split' };
 
   return (
     <div className="app">
@@ -117,6 +119,7 @@ export default function App() {
         )}
         {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} />}
         {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} />}
+        {tab === 'split'   && <BillSplitter embedded />}
       </main>
 
       <nav className="bottom-nav">
