@@ -193,20 +193,14 @@ export default function ExpenseList({ expenses, categories, onDelete, onEdit, lo
                   <span className={`expense-amount${isIncome ? ' expense-amount--income' : ''}`}>
                     {isIncome ? '+' : ''}{formatAmount(exp.amount)}
                   </span>
-                  <button
-                    className="delete-btn"
-                    onClick={() => openEdit(exp)}
-                    title="Edit"
-                  >
-                    <FontAwesomeIcon icon={faPen} />
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={() => onDelete(exp.id)}
-                    title="Delete"
-                  >
-                    <FontAwesomeIcon icon={faTrashCan} />
-                  </button>
+                  <div className="expense-actions">
+                    <button className="delete-btn" onClick={() => openEdit(exp)} title="Edit">
+                      <FontAwesomeIcon icon={faPen} />
+                    </button>
+                    <button className="delete-btn" onClick={() => onDelete(exp.id)} title="Delete">
+                      <FontAwesomeIcon icon={faTrashCan} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -237,7 +231,7 @@ export default function ExpenseList({ expenses, categories, onDelete, onEdit, lo
             </div>
 
             <div className="type-toggle">
-              <button type="button" className={`type-toggle-btn ${editDraft.type === 'expense' ? 'active' : ''}`} onClick={() => setEditDraft(d => ({ ...d, type: 'expense', category: '' }))}>Expense</button>
+              <button type="button" className={`type-toggle-btn ${editDraft.type === 'expense' ? 'active' : ''}`} onClick={() => setEditDraft(d => ({ ...d, type: 'expense', category: editingExp.category || '' }))}>Expense</button>
               <button type="button" className={`type-toggle-btn type-toggle-btn--income ${editDraft.type === 'income' ? 'active' : ''}`} onClick={() => setEditDraft(d => ({ ...d, type: 'income', category: '' }))}>Income</button>
             </div>
 

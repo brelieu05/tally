@@ -34,10 +34,11 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
-  const [shareId, setShareId]     = useState(getBillId); // reuse if already shared
-  const [copied, setCopied]       = useState(false);
-  const [sharing, setSharing]     = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const [shareId, setShareId]       = useState(getBillId); // reuse if already shared
+  const [splitExpenseId, setSplitExpenseId] = useState(null); // expense created from this split
+  const [copied, setCopied]         = useState(false);
+  const [sharing, setSharing]       = useState(false);
+  const [loadError, setLoadError]   = useState(false);
 
   useEffect(() => {
     onDirtyChange?.(billName !== '' || people.length > 1 || items.length > 0);
@@ -159,23 +160,34 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         setShareId(id);
       }
       const url = `${window.location.origin}/split/${id}`;
-      // Add expense for Brendan's amount if he paid
+      // Add or update expense for Brendan's share if he paid
       if (paidBy === MY_NAME && grandTotal > 0 && accountId && token) {
         const myTotal = personTotals.find(p => p.name === MY_NAME)?.total ?? grandTotal;
-        const res = await fetch('/api/expenses', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: parseFloat(myTotal.toFixed(2)),
-            category: splitCategory,
-            description: billName || 'Split bill',
-            date: new Date().toISOString().slice(0, 10),
-            type: 'expense',
-            account_id: accountId,
-          }),
-        });
-        const newExp = await res.json();
-        if (!newExp.error) onExpenseAdded?.(newExp);
+        const expPayload = {
+          amount: parseFloat(myTotal.toFixed(2)),
+          category: splitCategory,
+          description: billName || 'Split bill',
+          date: new Date().toISOString().slice(0, 10),
+          type: 'expense',
+          account_id: accountId,
+        };
+        if (splitExpenseId) {
+          const res = await fetch(`/api/expenses/${splitExpenseId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(expPayload),
+          });
+          const updated = await res.json();
+          if (!updated.error) onExpenseAdded?.(updated);
+        } else {
+          const res = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(expPayload),
+          });
+          const newExp = await res.json();
+          if (!newExp.error) { setSplitExpenseId(newExp.id); onExpenseAdded?.(newExp); }
+        }
       }
       onDirtyChange?.(false);
       let copyOk = false;

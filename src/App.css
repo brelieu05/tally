@@ -396,6 +396,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   gap: 4px;
   flex-shrink: 0;
 }
+.expense-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
 .expense-amount {
   font-size: 15px;
   font-weight: 700;
