@@ -21,6 +21,8 @@ app.use(express.json());
 // ── In-memory store (local dev) ────────────────────────────────
 const mem = {
   accounts:   [{ id: 1, name: 'Main' }],
+  loans:         [],
+  nextLoanId:    1,
   categories: [
     { id: 1, name: 'Food',          color: '#F97316' },
     { id: 2, name: 'Transport',     color: '#3B82F6' },
@@ -72,6 +74,19 @@ async function initDb() {
     );
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS type       TEXT    NOT NULL DEFAULT 'expense';
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE;
+    CREATE TABLE IF NOT EXISTS loans (
+      id               SERIAL PRIMARY KEY,
+      name             TEXT NOT NULL,
+      loan_type        TEXT NOT NULL DEFAULT 'unsubsidized',
+      original_amount  NUMERIC(12,2) NOT NULL,
+      current_balance  NUMERIC(12,2) NOT NULL,
+      interest_rate    NUMERIC(6,3) NOT NULL,
+      term_months      INTEGER NOT NULL DEFAULT 120,
+      monthly_payment  NUMERIC(10,2),
+      start_date       DATE,
+      status           TEXT NOT NULL DEFAULT 'repayment',
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    );
     CREATE TABLE IF NOT EXISTS split_bills (
       id         TEXT PRIMARY KEY,
       data       JSONB NOT NULL,
@@ -189,6 +204,69 @@ app.get('/api/split/:id', async (req, res) => {
   const { rows } = await pool.query('SELECT data FROM split_bills WHERE id = $1', [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0].data);
+});
+
+// ── Loans ──────────────────────────────────────────────────────
+app.get('/api/loans', requireAuth, async (req, res) => {
+  if (isLocal) return res.json([...mem.loans].sort((a, b) => a.id - b.id));
+  const { rows } = await pool.query('SELECT * FROM loans ORDER BY created_at');
+  res.json(rows);
+});
+
+app.post('/api/loans', requireAuth, async (req, res) => {
+  const { name, loan_type, original_amount, current_balance, interest_rate, term_months, monthly_payment, start_date, status } = req.body;
+  if (!name?.trim() || !original_amount || !current_balance || interest_rate == null) {
+    return res.status(400).json({ error: 'name, original_amount, current_balance, interest_rate required' });
+  }
+  if (isLocal) {
+    const loan = {
+      id: mem.nextLoanId++, name: name.trim(), loan_type: loan_type || 'unsubsidized',
+      original_amount: parseFloat(original_amount), current_balance: parseFloat(current_balance),
+      interest_rate: parseFloat(interest_rate), term_months: parseInt(term_months) || 120,
+      monthly_payment: monthly_payment ? parseFloat(monthly_payment) : null,
+      start_date: start_date || null, status: status || 'repayment',
+    };
+    mem.loans.push(loan);
+    return res.json(loan);
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO loans (name, loan_type, original_amount, current_balance, interest_rate, term_months, monthly_payment, start_date, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [name.trim(), loan_type || 'unsubsidized', parseFloat(original_amount), parseFloat(current_balance),
+     parseFloat(interest_rate), parseInt(term_months) || 120,
+     monthly_payment ? parseFloat(monthly_payment) : null, start_date || null, status || 'repayment']
+  );
+  res.json(rows[0]);
+});
+
+app.put('/api/loans/:id', requireAuth, async (req, res) => {
+  const { name, loan_type, original_amount, current_balance, interest_rate, term_months, monthly_payment, start_date, status } = req.body;
+  const id = parseInt(req.params.id);
+  if (isLocal) {
+    const idx = mem.loans.findIndex(l => l.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+    mem.loans[idx] = { ...mem.loans[idx], name: name.trim(), loan_type, original_amount: parseFloat(original_amount),
+      current_balance: parseFloat(current_balance), interest_rate: parseFloat(interest_rate),
+      term_months: parseInt(term_months) || 120, monthly_payment: monthly_payment ? parseFloat(monthly_payment) : null,
+      start_date: start_date || null, status };
+    return res.json(mem.loans[idx]);
+  }
+  const { rows } = await pool.query(
+    `UPDATE loans SET name=$1, loan_type=$2, original_amount=$3, current_balance=$4, interest_rate=$5,
+     term_months=$6, monthly_payment=$7, start_date=$8, status=$9 WHERE id=$10 RETURNING *`,
+    [name.trim(), loan_type, parseFloat(original_amount), parseFloat(current_balance),
+     parseFloat(interest_rate), parseInt(term_months) || 120,
+     monthly_payment ? parseFloat(monthly_payment) : null, start_date || null, status, id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json(rows[0]);
+});
+
+app.delete('/api/loans/:id', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isLocal) { mem.loans = mem.loans.filter(l => l.id !== id); return res.json({ success: true }); }
+  await pool.query('DELETE FROM loans WHERE id = $1', [id]);
+  res.json({ success: true });
 });
 
 // ── Accounts ───────────────────────────────────────────────────
