@@ -13,7 +13,11 @@ function getBillId() {
 
 export default function BillSplitter({ embedded = false, onDirtyChange }) {
   const [billName, setBillName]   = useState('');
-  const [people, setPeople]       = useState([]);
+  const MY_NAME  = import.meta.env.VITE_MY_NAME  || '';
+  const MY_VENMO = import.meta.env.VITE_MY_VENMO || '';
+  const MY_ZELLE = import.meta.env.VITE_MY_ZELLE || '';
+
+  const [people, setPeople]       = useState([MY_NAME]);
   const [items, setItems]         = useState([]);
   const [tax, setTax]             = useState('7.25');
   const [taxMode, setTaxMode]     = useState('%');
@@ -34,8 +38,15 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    onDirtyChange?.(billName !== '' || people.length > 0 || items.length > 0);
+    onDirtyChange?.(billName !== '' || people.length > 1 || items.length > 0);
   }, [billName, people, items]);
+
+  useEffect(() => {
+    if (paidBy === MY_NAME) {
+      if (MY_VENMO) setVenmo(MY_VENMO);
+      if (MY_ZELLE) setZelle(MY_ZELLE);
+    }
+  }, [paidBy]);
 
   // Load bill from server if URL has an ID
   useEffect(() => {
