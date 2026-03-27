@@ -288,6 +288,16 @@ input, textarea, select { font-family: inherit; }
 }
 .text-input::placeholder { color: var(--text-muted); }
 
+/* Make the native calendar icon always visible */
+input[type="date"] { color-scheme: light; }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
 .input-row {
   display: flex;
   gap: 10px;

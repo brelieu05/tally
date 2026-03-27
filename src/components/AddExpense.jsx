@@ -135,7 +135,7 @@ export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyCh
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                style={{ width: 130, flexShrink: 0 }}
+                style={{ flex: '0 0 auto', minWidth: 0 }}
                 required
               />
             </div>
