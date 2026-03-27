@@ -173,8 +173,8 @@ export default function App() {
             />
           </>
         )}
-        {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} />}
-        {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} />}
+        {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} balance={balance} expenses={expenses} />}
+        {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} balance={balance} expenses={expenses} />}
         {tab === 'split' && (
           <>
             <div className="split-subtabs">

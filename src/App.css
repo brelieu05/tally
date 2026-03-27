@@ -1310,3 +1310,42 @@ input, textarea, select { font-family: inherit; }
   border-color: var(--orange);
   color: var(--orange);
 }
+
+/* ── Period Balance Row (Weekly / Monthly) ───────── */
+.period-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.period-balance-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.period-balance-col--right {
+  align-items: flex-end;
+}
+.period-balance-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.period-balance-amount {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.period-balance-amount.balance-negative {
+  color: var(--red);
+}
+.period-balance-arrow {
+  font-size: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}

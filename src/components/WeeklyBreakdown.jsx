@@ -29,7 +29,7 @@ function formatWeekLabel(monday) {
   return `${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}`;
 }
 
-export default function WeeklyBreakdown({ categories, token }) {
+export default function WeeklyBreakdown({ categories, token, balance, expenses }) {
   const [monday, setMonday] = useState(() => getMondayOfWeek(new Date()));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,16 @@ export default function WeeklyBreakdown({ categories, token }) {
 
   const isCurrentWeek = toDateStr(monday) === toDateStr(getMondayOfWeek(new Date()));
   const todayStr = toDateStr(new Date());
+
+  const periodEndStr = toDateStr(addDays(monday, 6));
+  const allExpenses = expenses || [];
+  const totalAllExpenses = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const currentBalance = balance !== null ? balance - totalAllExpenses : null;
+  const spentAfterPeriod = balance !== null
+    ? allExpenses.filter(e => e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0)
+    : 0;
+  const balanceAfter  = balance !== null ? currentBalance + spentAfterPeriod : null;
+  const balanceBefore = balance !== null ? balanceAfter + Number(data?.total || 0) : null;
 
   const colorFor = (name) => categories.find(c => c.name === name)?.color || '#6B7280';
 
@@ -81,6 +91,22 @@ export default function WeeklyBreakdown({ categories, token }) {
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
         </div>
+
+        {!loading && balance !== null && (
+          <div className="period-balance-row">
+            <div className="period-balance-col">
+              <span className="period-balance-label">Start</span>
+              <span className="period-balance-amount">${balanceBefore.toFixed(2)}</span>
+            </div>
+            <span className="period-balance-arrow">→</span>
+            <div className="period-balance-col period-balance-col--right">
+              <span className="period-balance-label">End</span>
+              <span className={`period-balance-amount${balanceAfter < 0 ? ' balance-negative' : ''}`}>
+                ${balanceAfter.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="total-block">
           <div className="total-label">Total Spent</div>
