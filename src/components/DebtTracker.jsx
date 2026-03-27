@@ -303,19 +303,19 @@ export default function DebtTracker({ token }) {
                 </div>
               </div>
 
-              {/* Payment + Start Date */}
-              <div className="input-row" style={{ minWidth: 0 }}>
-                <div className="debt-form-group" style={{ flex: 1, minWidth: 0 }}>
-                  <label className="debt-form-label">Monthly Payment <span className="debt-form-optional">(optional)</span></label>
-                  <div className="debt-field-prefix-wrap">
-                    <span className="debt-field-prefix">$</span>
-                    <input className="text-input debt-input-prefixed" type="number" min="0" step="0.01" placeholder="auto" value={form.monthly_payment} onChange={e => setField('monthly_payment', e.target.value)} />
-                  </div>
+              {/* Payment */}
+              <div className="debt-form-group">
+                <label className="debt-form-label">Monthly Payment <span className="debt-form-optional">(optional — leave blank to calculate)</span></label>
+                <div className="debt-field-prefix-wrap">
+                  <span className="debt-field-prefix">$</span>
+                  <input className="text-input debt-input-prefixed" type="number" min="0" step="0.01" placeholder="auto" value={form.monthly_payment} onChange={e => setField('monthly_payment', e.target.value)} />
                 </div>
-                <div className="debt-form-group" style={{ flex: '0 0 130px', minWidth: 0 }}>
-                  <label className="debt-form-label">Start Date</label>
-                  <input className="text-input" type="date" value={form.start_date} onChange={e => setField('start_date', e.target.value)} style={{ width: '100%' }} />
-                </div>
+              </div>
+
+              {/* Start Date */}
+              <div className="debt-form-group">
+                <label className="debt-form-label">Start Date</label>
+                <input className="text-input" type="date" value={form.start_date} onChange={e => setField('start_date', e.target.value)} />
               </div>
 
               {/* Subsidized note */}
