@@ -142,9 +142,25 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
         id = data.id;
         setShareId(id);
       }
-      await navigator.clipboard.writeText(`${window.location.origin}/split/${id}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      const url = `${window.location.origin}/split/${id}`;
+      let copyOk = false;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try { await navigator.clipboard.writeText(url); copyOk = true; } catch (_) {}
+      }
+      if (!copyOk) {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { copyOk = document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+      }
+      if (copyOk) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
     } finally {
       setSharing(false);
     }
