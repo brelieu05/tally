@@ -19,7 +19,11 @@ const IS_LOCAL = window.location.hostname === 'localhost';
 
 export default function App() {
   const [token, setToken]       = useState(() => IS_LOCAL ? 'local' : localStorage.getItem('tally_token'));
-  const [tab, setTab]           = useState(() => new URLSearchParams(window.location.search).get('tab') || 'home');
+  const isSplitPath = /^\/split\/\w+/.test(window.location.pathname);
+  const [tab, setTab]           = useState(() => {
+    if (isSplitPath) return 'split';
+    return new URLSearchParams(window.location.search).get('tab') || 'home';
+  });
   const [splitView, setSplitView] = useState('new');
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -272,7 +276,7 @@ export default function App() {
               <button className={`split-subtab ${splitView === 'new' ? 'active' : ''}`} onClick={() => handleSplitViewChange('new')}>New</button>
               <button className={`split-subtab ${splitView === 'history' ? 'active' : ''}`} onClick={() => handleSplitViewChange('history')}>History</button>
             </div>
-            {splitView === 'new'     && <BillSplitter embedded onDirtyChange={setSplitDirty} categories={categories} token={token} accountId={currentAccountId} onExpenseAdded={exp => setExpenses(prev => prev.some(e => e.id === exp.id) ? prev.map(e => e.id === exp.id ? exp : e) : [exp, ...prev])} />}
+            {splitView === 'new'     && <BillSplitter embedded onDirtyChange={setSplitDirty} categories={categories} token={token} accountId={currentAccountId} onExpenseAdded={exp => setExpenses(prev => prev.some(e => e.id === exp.id) ? prev.map(e => e.id === exp.id ? exp : e) : [exp, ...prev])} onBillLoaded={() => window.history.replaceState(null, '', '/')} />}
             {splitView === 'history' && <SplitHistory token={token} />}
           </>
         )}

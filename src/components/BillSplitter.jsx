@@ -11,7 +11,7 @@ function getBillId() {
   return parts[2] || null;
 }
 
-export default function BillSplitter({ embedded = false, onDirtyChange, categories = [], token = '', accountId = null, onExpenseAdded }) {
+export default function BillSplitter({ embedded = false, onDirtyChange, categories = [], token = '', accountId = null, onExpenseAdded, onBillLoaded }) {
   const MY_NAME  = import.meta.env.VITE_MY_NAME  || '';
   const MY_VENMO = import.meta.env.VITE_MY_VENMO || '';
   const MY_ZELLE = import.meta.env.VITE_MY_ZELLE || '';
@@ -73,6 +73,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         setPaidBy(data.paidBy ?? '');
         setVenmo(data.venmo   ?? '');
         setZelle(data.zelle   ?? '');
+        onBillLoaded?.();
       })
       .catch(() => setLoadError(true));
   }, []);
