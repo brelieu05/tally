@@ -23,6 +23,10 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [balance, setBalance]   = useState(() => {
+    const v = localStorage.getItem('tally_balance');
+    return v !== null ? parseFloat(v) : null;
+  });
   const [homeDirty, setHomeDirty]   = useState(false);
   const [splitDirty, setSplitDirty] = useState(false);
   const [pendingTab, setPendingTab] = useState(null);
@@ -51,6 +55,11 @@ export default function App() {
     setPendingTab(null);
     setPendingSplitView(null);
   }
+
+  useEffect(() => {
+    if (balance !== null) localStorage.setItem('tally_balance', balance);
+    else localStorage.removeItem('tally_balance');
+  }, [balance]);
 
   useEffect(() => { if (token) fetchAll(); }, [token]);
 
@@ -159,6 +168,8 @@ export default function App() {
               categories={categories}
               onDelete={handleDelete}
               loading={loading}
+              balance={balance}
+              onBalanceChange={setBalance}
             />
           </>
         )}

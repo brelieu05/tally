@@ -1,7 +1,8 @@
+import { useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faReceipt, faUtensils, faCar, faFilm, faBagShopping,
-  faBolt, faHeartPulse, faTag,
+  faBolt, faHeartPulse, faTag, faPen,
 } from '@fortawesome/free-solid-svg-icons';
 import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
@@ -34,12 +35,79 @@ function formatAmount(n) {
   return '$' + Number(n).toFixed(2);
 }
 
-export default function ExpenseList({ expenses, categories, onDelete, loading }) {
+export default function ExpenseList({ expenses, categories, onDelete, loading, balance, onBalanceChange }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef(null);
+
   const colorFor = (name) => categories.find(c => c.name === name)?.color || '#6B7280';
+  const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const currentBalance = balance !== null ? balance - totalSpent : null;
+
+  function startEdit() {
+    setDraft(balance !== null ? String(balance) : '');
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function commitEdit() {
+    const val = parseFloat(draft);
+    if (!isNaN(val) && val >= 0) onBalanceChange(val);
+    setEditing(false);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') commitEdit();
+    if (e.key === 'Escape') setEditing(false);
+  }
 
   if (loading) return <div className="spinner" />;
 
   return (
+    <>
+      <div className="balance-card">
+        <div className="balance-card-header">
+          <span className="card-title">Balance</span>
+          {!editing && (
+            <button className="balance-edit-btn" onClick={startEdit} title="Edit balance">
+              <FontAwesomeIcon icon={faPen} />
+            </button>
+          )}
+        </div>
+        {editing ? (
+          <div className="balance-edit-row">
+            <span className="balance-symbol">$</span>
+            <input
+              ref={inputRef}
+              className="balance-input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              placeholder="0.00"
+            />
+          </div>
+        ) : balance !== null ? (
+          <div className="balance-body">
+            <span className={`balance-amount${currentBalance < 0 ? ' balance-negative' : ''}`}>
+              {currentBalance < 0 ? '-' : ''}${Math.abs(currentBalance).toFixed(2)}
+            </span>
+            <div className="balance-meta">
+              <span>Set&nbsp;${Number(balance).toFixed(2)}</span>
+              <span className="expense-dot">·</span>
+              <span>Spent&nbsp;${totalSpent.toFixed(2)}</span>
+            </div>
+          </div>
+        ) : (
+          <button className="balance-prompt" onClick={startEdit}>
+            Tap to set your bank balance
+          </button>
+        )}
+      </div>
+
     <div className="card">
       <div className="card-header">
         <span className="card-title">Recent</span>
@@ -99,5 +167,6 @@ export default function ExpenseList({ expenses, categories, onDelete, loading })
         </div>
       )}
     </div>
+    </>
   );
 }

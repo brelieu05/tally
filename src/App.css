@@ -1217,3 +1217,96 @@ input, textarea, select { font-family: inherit; }
 }
 .login-submit:hover  { background: var(--orange-hover); }
 .login-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Balance Card ────────────────────────────────── */
+.balance-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px 16px;
+}
+.balance-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.balance-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: background 0.12s, color 0.12s;
+}
+.balance-edit-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.balance-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.balance-amount {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--text);
+  line-height: 1;
+}
+.balance-amount.balance-negative {
+  color: var(--red);
+}
+.balance-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.balance-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--orange);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+}
+.balance-symbol {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.balance-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  outline: none;
+  min-width: 0;
+}
+.balance-input::placeholder { color: var(--border); }
+.balance-prompt {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+  transition: border-color 0.12s, color 0.12s;
+}
+.balance-prompt:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
