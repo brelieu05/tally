@@ -45,6 +45,9 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
     if (paidBy === MY_NAME) {
       if (MY_VENMO) setVenmo(MY_VENMO);
       if (MY_ZELLE) setZelle(MY_ZELLE);
+    } else {
+      setVenmo('');
+      setZelle('');
     }
   }, [paidBy]);
 
