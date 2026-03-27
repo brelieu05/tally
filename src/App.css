@@ -892,8 +892,10 @@ input, textarea, select { font-family: inherit; }
   background: #dcfce7;
   border-color: #86efac;
   color: #16a34a;
+  opacity: 1;
+  cursor: default;
 }
-.split-share-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.split-share-btn:disabled:not(.copied) { opacity: 0.4; cursor: not-allowed; }
 
 .split-mode-toggle {
   display: flex;

@@ -194,7 +194,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
     <button
       className={`split-share-btn ${copied ? 'copied' : ''}`}
       onClick={copyShareLink}
-      disabled={!hasContent || sharing}
+      disabled={!hasContent || sharing || copied}
       title="Copy share link"
     >
       <FontAwesomeIcon icon={copied ? faCheck : faLink} />
