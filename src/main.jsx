@@ -6,8 +6,11 @@ import './App.css';
 
 const root = createRoot(document.getElementById('root'));
 
+const isSplitPath = window.location.pathname.startsWith('/split/');
+const isLoggedIn  = !!localStorage.getItem('tally_token') || window.location.hostname === 'localhost';
+
 root.render(
   <StrictMode>
-    {window.location.pathname.startsWith('/split') ? <BillSplitter /> : <App />}
+    {isSplitPath && !isLoggedIn ? <BillSplitter /> : <App />}
   </StrictMode>
 );
