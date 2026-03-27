@@ -20,6 +20,7 @@ app.use(express.json());
 
 // ── In-memory store (local dev) ────────────────────────────────
 const mem = {
+  accounts:   [{ id: 1, name: 'Main' }],
   categories: [
     { id: 1, name: 'Food',          color: '#F97316' },
     { id: 2, name: 'Transport',     color: '#3B82F6' },
@@ -29,10 +30,11 @@ const mem = {
     { id: 6, name: 'Health',        color: '#22C55E' },
     { id: 7, name: 'Other',         color: '#6B7280' },
   ],
-  expenses:   [],
-  splitBills: {},
-  nextCatId:  8,
-  nextExpId:  1,
+  expenses:      [],
+  splitBills:    {},
+  nextAccountId: 2,
+  nextCatId:     8,
+  nextExpId:     1,
 };
 
 // ── Postgres pool (production only) ───────────────────────────
@@ -53,6 +55,11 @@ async function initDb() {
       name  TEXT UNIQUE NOT NULL,
       color TEXT NOT NULL DEFAULT '#6B7280'
     );
+    CREATE TABLE IF NOT EXISTS accounts (
+      id         SERIAL PRIMARY KEY,
+      name       TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
     CREATE TABLE IF NOT EXISTS expenses (
       id          SERIAL PRIMARY KEY,
       amount      NUMERIC(10,2) NOT NULL,
@@ -60,15 +67,22 @@ async function initDb() {
       description TEXT NOT NULL DEFAULT '',
       date        DATE NOT NULL,
       type        TEXT NOT NULL DEFAULT 'expense',
+      account_id  INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
       created_at  TIMESTAMPTZ DEFAULT NOW()
     );
-    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'expense';
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS type       TEXT    NOT NULL DEFAULT 'expense';
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE;
     CREATE TABLE IF NOT EXISTS split_bills (
       id         TEXT PRIMARY KEY,
       data       JSONB NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  // Seed default account if none exist
+  await pool.query(`INSERT INTO accounts (name) SELECT 'Main' WHERE NOT EXISTS (SELECT 1 FROM accounts)`);
+  // Assign existing un-owned expenses to the first account
+  await pool.query(`UPDATE expenses SET account_id = (SELECT id FROM accounts ORDER BY id LIMIT 1) WHERE account_id IS NULL`);
+
   const seeds = [
     ['Food','#F97316'],['Transport','#3B82F6'],['Entertainment','#8B5CF6'],
     ['Shopping','#EC4899'],['Bills','#EAB308'],['Health','#22C55E'],['Other','#6B7280'],
@@ -177,6 +191,41 @@ app.get('/api/split/:id', async (req, res) => {
   res.json(rows[0].data);
 });
 
+// ── Accounts ───────────────────────────────────────────────────
+app.get('/api/accounts', requireAuth, async (req, res) => {
+  if (isLocal) return res.json([...mem.accounts]);
+  const { rows } = await pool.query('SELECT id, name FROM accounts ORDER BY created_at');
+  res.json(rows);
+});
+
+app.post('/api/accounts', requireAuth, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
+  if (isLocal) {
+    const account = { id: mem.nextAccountId++, name: name.trim() };
+    mem.accounts.push(account);
+    return res.json(account);
+  }
+  const { rows } = await pool.query(
+    'INSERT INTO accounts (name) VALUES ($1) RETURNING id, name', [name.trim()]
+  );
+  res.json(rows[0]);
+});
+
+app.delete('/api/accounts/:id', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isLocal) {
+    if (mem.accounts.length <= 1) return res.status(400).json({ error: 'Cannot delete last account' });
+    mem.accounts = mem.accounts.filter(a => a.id !== id);
+    mem.expenses = mem.expenses.filter(e => e.account_id !== id);
+    return res.json({ success: true });
+  }
+  const { rows } = await pool.query('SELECT COUNT(*) FROM accounts');
+  if (parseInt(rows[0].count) <= 1) return res.status(400).json({ error: 'Cannot delete last account' });
+  await pool.query('DELETE FROM accounts WHERE id = $1', [id]);
+  res.json({ success: true });
+});
+
 // ── Categories ─────────────────────────────────────────────────
 app.get('/api/categories', requireAuth, async (req, res) => {
   if (isLocal) return res.json([...mem.categories].sort((a, b) => a.name.localeCompare(b.name)));
@@ -216,9 +265,11 @@ app.delete('/api/categories/:id', requireAuth, async (req, res) => {
 
 // ── Expenses ───────────────────────────────────────────────────
 app.get('/api/expenses', requireAuth, async (req, res) => {
+  const account_id = parseInt(req.query.account_id);
+  if (!account_id) return res.status(400).json({ error: 'account_id required' });
   if (isLocal) {
     const { start, end } = req.query;
-    let exps = [...mem.expenses];
+    let exps = mem.expenses.filter(e => e.account_id === account_id);
     if (start && end) {
       exps = exps.filter(e => e.date >= start && e.date <= end);
     } else {
@@ -229,31 +280,32 @@ app.get('/api/expenses', requireAuth, async (req, res) => {
   const { start, end } = req.query;
   if (start && end) {
     const { rows } = await pool.query(
-      `SELECT * FROM expenses WHERE date >= $1 AND date <= $2 ORDER BY date DESC, created_at DESC`,
-      [start, end]
+      `SELECT * FROM expenses WHERE account_id = $1 AND date >= $2 AND date <= $3 ORDER BY date DESC, created_at DESC`,
+      [account_id, start, end]
     );
     res.json(rows);
   } else {
     const { rows } = await pool.query(
-      `SELECT * FROM expenses ORDER BY date DESC, created_at DESC LIMIT 50`
+      `SELECT * FROM expenses WHERE account_id = $1 ORDER BY date DESC, created_at DESC LIMIT 50`,
+      [account_id]
     );
     res.json(rows);
   }
 });
 
 app.post('/api/expenses', requireAuth, async (req, res) => {
-  const { amount, category, description, date, type = 'expense' } = req.body;
-  if (!amount || !date) return res.status(400).json({ error: 'Amount and date required' });
+  const { amount, category, description, date, type = 'expense', account_id } = req.body;
+  if (!amount || !date || !account_id) return res.status(400).json({ error: 'Amount, date, and account_id required' });
   if (type === 'expense' && !category) return res.status(400).json({ error: 'Category required for expenses' });
   if (isLocal) {
-    const exp = { id: mem.nextExpId++, amount: parseFloat(amount), category: category || '', description: description?.trim() || '', date, type };
+    const exp = { id: mem.nextExpId++, amount: parseFloat(amount), category: category || '', description: description?.trim() || '', date, type, account_id: parseInt(account_id) };
     mem.expenses.unshift(exp);
     return res.json(exp);
   }
   const { rows } = await pool.query(
-    `INSERT INTO expenses (amount, category, description, date, type) VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, amount, category, description, date, type`,
-    [parseFloat(amount), category || '', description?.trim() || '', date, type]
+    `INSERT INTO expenses (amount, category, description, date, type, account_id) VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, amount, category, description, date, type, account_id`,
+    [parseFloat(amount), category || '', description?.trim() || '', date, type, parseInt(account_id)]
   );
   res.json(rows[0]);
 });
@@ -269,14 +321,15 @@ app.delete('/api/expenses/:id', requireAuth, async (req, res) => {
 
 // ── Weekly breakdown ───────────────────────────────────────────
 app.get('/api/expenses/weekly', requireAuth, async (req, res) => {
-  const { week_start } = req.query;
-  if (!week_start) return res.status(400).json({ error: 'week_start required' });
+  const { week_start, account_id } = req.query;
+  if (!week_start || !account_id) return res.status(400).json({ error: 'week_start and account_id required' });
+  const aid = parseInt(account_id);
 
   if (isLocal) {
     const weekEnd = new Date(week_start);
     weekEnd.setDate(weekEnd.getDate() + 6);
     const weekEndStr = weekEnd.toISOString().slice(0, 10);
-    const exps = mem.expenses.filter(e => e.date >= week_start && e.date <= weekEndStr && e.type !== 'income');
+    const exps = mem.expenses.filter(e => e.account_id === aid && e.date >= week_start && e.date <= weekEndStr && e.type !== 'income');
 
     const byDayMap = {};
     const byCatMap = {};
@@ -296,17 +349,17 @@ app.get('/api/expenses/weekly', requireAuth, async (req, res) => {
   const [byDay, byCategory, total] = await Promise.all([
     pool.query(
       `SELECT date::text, SUM(amount) AS total FROM expenses
-       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'
-       GROUP BY date ORDER BY date`, [week_start]
+       WHERE account_id = $2 AND date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'
+       GROUP BY date ORDER BY date`, [week_start, aid]
     ),
     pool.query(
       `SELECT category, SUM(amount) AS total, COUNT(*) AS count FROM expenses
-       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'
-       GROUP BY category ORDER BY total DESC`, [week_start]
+       WHERE account_id = $2 AND date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'
+       GROUP BY category ORDER BY total DESC`, [week_start, aid]
     ),
     pool.query(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
-       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'`, [week_start]
+       WHERE account_id = $2 AND date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'`, [week_start, aid]
     ),
   ]);
   res.json({ byDay: byDay.rows, byCategory: byCategory.rows, total: total.rows[0].total });
@@ -314,12 +367,13 @@ app.get('/api/expenses/weekly', requireAuth, async (req, res) => {
 
 // ── Monthly breakdown ──────────────────────────────────────────
 app.get('/api/expenses/monthly', requireAuth, async (req, res) => {
-  const { year, month } = req.query;
-  if (!year || !month) return res.status(400).json({ error: 'year and month required' });
+  const { year, month, account_id } = req.query;
+  if (!year || !month || !account_id) return res.status(400).json({ error: 'year, month, and account_id required' });
   const ym = `${year}-${String(month).padStart(2, '0')}`;
+  const aid = parseInt(account_id);
 
   if (isLocal) {
-    const exps = mem.expenses.filter(e => e.date.slice(0, 7) === ym && e.type !== 'income');
+    const exps = mem.expenses.filter(e => e.account_id === aid && e.date.slice(0, 7) === ym && e.type !== 'income');
     const byCatMap = {};
     const byWeekMap = {};
     let total = 0;
@@ -339,14 +393,14 @@ app.get('/api/expenses/monthly', requireAuth, async (req, res) => {
   const [byCategory, byWeek, total] = await Promise.all([
     pool.query(
       `SELECT category, SUM(amount) AS total, COUNT(*) AS count FROM expenses
-       WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense' GROUP BY category ORDER BY total DESC`, [ym]
+       WHERE account_id = $2 AND TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense' GROUP BY category ORDER BY total DESC`, [ym, aid]
     ),
     pool.query(
       `SELECT ((EXTRACT(DAY FROM date)::int - 1) / 7) + 1 AS week_num, SUM(amount) AS total
-       FROM expenses WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense' GROUP BY week_num ORDER BY week_num`, [ym]
+       FROM expenses WHERE account_id = $2 AND TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense' GROUP BY week_num ORDER BY week_num`, [ym, aid]
     ),
     pool.query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense'`, [ym]
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE account_id = $2 AND TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense'`, [ym, aid]
     ),
   ]);
   res.json({ byCategory: byCategory.rows, byWeek: byWeek.rows, total: total.rows[0].total });

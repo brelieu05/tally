@@ -18,19 +18,19 @@ function addMonths(date, n) {
   return d;
 }
 
-export default function MonthlyBreakdown({ categories, token, balance, expenses }) {
+export default function MonthlyBreakdown({ categories, token, balance, expenses, accountId }) {
   const [current, setCurrent] = useState(() => new Date());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const { year, month } = getYearMonth(current);
 
-  useEffect(() => { fetchData(); }, [year, month]);
+  useEffect(() => { if (accountId) fetchData(); }, [year, month, accountId]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/expenses/monthly?year=${year}&month=${month}`, {
+      const res = await fetch(`/api/expenses/monthly?year=${year}&month=${month}&account_id=${accountId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setData(await res.json());

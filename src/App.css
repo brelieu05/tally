@@ -1108,7 +1108,6 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Logout button ──────────────────────────────────── */
 .logout-btn {
-  margin-left: auto;
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -1390,4 +1389,85 @@ input, textarea, select { font-family: inherit; }
   background: #dcfce7;
   color: #16a34a;
   border-color: #bbf7d0;
+}
+
+/* ── Header right cluster ────────────────────────── */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── Account pill (header) ───────────────────────── */
+.account-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  transition: background 0.12s, border-color 0.12s;
+  max-width: 130px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.account-pill:hover {
+  background: var(--orange-light);
+  border-color: var(--orange-border);
+}
+
+/* ── Account modal list ──────────────────────────── */
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+}
+.account-item {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: border-color 0.12s;
+}
+.account-item.active {
+  border-color: var(--orange-border);
+  background: var(--orange-light);
+}
+.account-item-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+.account-item-check {
+  color: var(--orange);
+  font-size: 13px;
+}
+.account-item-delete {
+  padding: 10px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  transition: color 0.12s;
+}
+.account-item-delete:hover { color: var(--red); }
+
+/* ── New account row ─────────────────────────────── */
+.account-new-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
 }

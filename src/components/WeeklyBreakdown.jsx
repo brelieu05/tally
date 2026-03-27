@@ -29,17 +29,17 @@ function formatWeekLabel(monday) {
   return `${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}`;
 }
 
-export default function WeeklyBreakdown({ categories, token, balance, expenses }) {
+export default function WeeklyBreakdown({ categories, token, balance, expenses, accountId }) {
   const [monday, setMonday] = useState(() => getMondayOfWeek(new Date()));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchData(); }, [monday]);
+  useEffect(() => { if (accountId) fetchData(); }, [monday, accountId]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/expenses/weekly?week_start=${toDateStr(monday)}`, {
+      const res = await fetch(`/api/expenses/weekly?week_start=${toDateStr(monday)}&account_id=${accountId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setData(await res.json());

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faCalendarDays, faArrowRightFromBracket, faScissors } from '@fortawesome/free-solid-svg-icons';
+import { faHouse, faCalendarDays, faArrowRightFromBracket, faScissors, faChevronDown, faCheck, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar, faChartBar } from '@fortawesome/free-regular-svg-icons';
 import Login from './components/Login';
 import AddExpense from './components/AddExpense';
@@ -19,19 +19,22 @@ const IS_LOCAL = window.location.hostname === 'localhost';
 export default function App() {
   const [token, setToken]       = useState(() => IS_LOCAL ? 'local' : localStorage.getItem('tally_token'));
   const [tab, setTab]           = useState(() => new URLSearchParams(window.location.search).get('tab') || 'home');
-  const [splitView, setSplitView] = useState('new'); // 'new' | 'history'
+  const [splitView, setSplitView] = useState('new');
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [balance, setBalance]   = useState(() => {
-    const v = localStorage.getItem('tally_balance');
-    return v !== null ? parseFloat(v) : null;
+  const [accounts, setAccounts] = useState([]);
+  const [currentAccountId, setCurrentAccountId] = useState(() => {
+    const v = localStorage.getItem('tally_account_id');
+    return v ? parseInt(v) : null;
   });
+  const [balance, setBalance]   = useState(null);
+  const [loading, setLoading]   = useState(true);
   const [homeDirty, setHomeDirty]   = useState(false);
   const [splitDirty, setSplitDirty] = useState(false);
   const [pendingTab, setPendingTab] = useState(null);
-
   const [pendingSplitView, setPendingSplitView] = useState(null);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
 
   function handleTabChange(newTab) {
     if (newTab === tab) return;
@@ -56,28 +59,92 @@ export default function App() {
     setPendingSplitView(null);
   }
 
-  useEffect(() => {
-    if (balance !== null) localStorage.setItem('tally_balance', balance);
-    else localStorage.removeItem('tally_balance');
-  }, [balance]);
+  function loadBalanceForAccount(accountId) {
+    const v = localStorage.getItem(`tally_balance_${accountId}`);
+    setBalance(v !== null ? parseFloat(v) : null);
+  }
 
-  useEffect(() => { if (token) fetchAll(); }, [token]);
+  function handleBalanceChange(val) {
+    setBalance(val);
+    if (currentAccountId) {
+      if (val !== null) localStorage.setItem(`tally_balance_${currentAccountId}`, val);
+      else localStorage.removeItem(`tally_balance_${currentAccountId}`);
+    }
+  }
 
-  async function fetchAll() {
+  useEffect(() => { if (token) fetchAll(currentAccountId); }, [token]);
+
+  async function fetchAll(forAccountId) {
     setLoading(true);
     try {
-      const [eRes, cRes] = await Promise.all([
-        fetch('/api/expenses',  { headers: authHeaders(token) }),
+      const [aRes, cRes] = await Promise.all([
+        fetch('/api/accounts',   { headers: authHeaders(token) }),
         fetch('/api/categories', { headers: authHeaders(token) }),
       ]);
-      if (eRes.status === 401) { handleLogout(); return; }
-      const [eData, cData] = await Promise.all([eRes.json(), cRes.json()]);
-      setExpenses(eData);
+      if (aRes.status === 401) { handleLogout(); return; }
+      const [aData, cData] = await Promise.all([aRes.json(), cRes.json()]);
+      setAccounts(aData);
       setCategories(cData);
+
+      let activeId = forAccountId;
+      if (!activeId || !aData.find(a => a.id === activeId)) {
+        activeId = aData[0]?.id ?? null;
+      }
+      if (activeId !== currentAccountId) {
+        setCurrentAccountId(activeId);
+        if (activeId) localStorage.setItem('tally_account_id', activeId);
+      }
+
+      if (activeId) {
+        loadBalanceForAccount(activeId);
+        const eRes = await fetch(`/api/expenses?account_id=${activeId}`, { headers: authHeaders(token) });
+        if (eRes.status === 401) { handleLogout(); return; }
+        setExpenses(await eRes.json());
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function switchAccount(accountId) {
+    setCurrentAccountId(accountId);
+    localStorage.setItem('tally_account_id', accountId);
+    loadBalanceForAccount(accountId);
+    setExpenses([]);
+    setShowAccountModal(false);
+    setLoading(true);
+    try {
+      const eRes = await fetch(`/api/expenses?account_id=${accountId}`, { headers: authHeaders(token) });
+      setExpenses(await eRes.json());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAddAccount() {
+    if (!newAccountName.trim()) return;
+    const res = await fetch('/api/accounts', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ name: newAccountName.trim() }),
+    });
+    const newAccount = await res.json();
+    if (!newAccount.error) {
+      setAccounts(prev => [...prev, newAccount]);
+      setNewAccountName('');
+    }
+  }
+
+  async function handleDeleteAccount(id) {
+    const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE', headers: authHeaders(token) });
+    const data = await res.json();
+    if (!data.error) {
+      localStorage.removeItem(`tally_balance_${id}`);
+      setAccounts(prev => prev.filter(a => a.id !== id));
     }
   }
 
@@ -95,7 +162,7 @@ export default function App() {
     const res = await fetch('/api/expenses', {
       method: 'POST',
       headers: authHeaders(token),
-      body: JSON.stringify(expense),
+      body: JSON.stringify({ ...expense, account_id: currentAccountId }),
     });
     const newExp = await res.json();
     setExpenses(prev => [newExp, ...prev]);
@@ -128,6 +195,7 @@ export default function App() {
   ];
 
   const titles = { home: 'tally', weekly: 'weekly', monthly: 'monthly', split: 'split' };
+  const currentAccount = accounts.find(a => a.id === currentAccountId);
 
   return (
     <div className="app">
@@ -147,11 +215,19 @@ export default function App() {
             </>
           )}
         </span>
-        {!IS_LOCAL && (
-          <button className="logout-btn" onClick={handleLogout} title="Sign out">
-            <FontAwesomeIcon icon={faArrowRightFromBracket} />
-          </button>
-        )}
+        <div className="header-right">
+          {currentAccount && (
+            <button className="account-pill" onClick={() => setShowAccountModal(true)}>
+              {currentAccount.name}
+              <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: 10 }} />
+            </button>
+          )}
+          {!IS_LOCAL && (
+            <button className="logout-btn" onClick={handleLogout} title="Sign out">
+              <FontAwesomeIcon icon={faArrowRightFromBracket} />
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="app-main">
@@ -167,14 +243,14 @@ export default function App() {
               expenses={expenses}
               categories={categories}
               onDelete={handleDelete}
-              loading={loading}
+              loading={loading && expenses.length === 0}
               balance={balance}
-              onBalanceChange={setBalance}
+              onBalanceChange={handleBalanceChange}
             />
           </>
         )}
-        {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} balance={balance} expenses={expenses} />}
-        {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} balance={balance} expenses={expenses} />}
+        {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} balance={balance} expenses={expenses} accountId={currentAccountId} />}
+        {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} balance={balance} expenses={expenses} accountId={currentAccountId} />}
         {tab === 'split' && (
           <>
             <div className="split-subtabs">
@@ -197,6 +273,41 @@ export default function App() {
             <div className="modal-actions">
               <button className="btn-secondary" onClick={cancelLeave}>Stay</button>
               <button className="btn-primary" onClick={confirmLeave}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAccountModal && (
+        <div className="modal-overlay" onClick={() => setShowAccountModal(false)}>
+          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+            <span className="modal-title">Accounts</span>
+            <div className="account-list">
+              {accounts.map(account => (
+                <div key={account.id} className={`account-item ${account.id === currentAccountId ? 'active' : ''}`}>
+                  <button className="account-item-btn" onClick={() => switchAccount(account.id)}>
+                    <span className="account-item-name">{account.name}</span>
+                    {account.id === currentAccountId && <FontAwesomeIcon icon={faCheck} className="account-item-check" />}
+                  </button>
+                  {accounts.length > 1 && account.id !== currentAccountId && (
+                    <button className="account-item-delete" onClick={() => handleDeleteAccount(account.id)} title="Delete account">
+                      <FontAwesomeIcon icon={faTrashCan} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="account-new-row">
+              <input
+                className="text-input"
+                placeholder="New account name"
+                value={newAccountName}
+                onChange={e => setNewAccountName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddAccount()}
+              />
+              <button className="btn-primary" onClick={handleAddAccount} disabled={!newAccountName.trim()}>
+                Add
+              </button>
             </div>
           </div>
         </div>
