@@ -605,8 +605,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-radius: 20px 20px 0 0;
   padding: 20px 20px 40px;
   width: 100%;
-  max-width: 430px;
-  overflow: hidden;
+  max-width: min(430px, 100vw);
+  box-sizing: border-box;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1589,8 +1590,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ── Debt modal form ─────────────────────────────── */
 .debt-modal { max-height: 90dvh; overflow-y: auto; }
-.debt-form { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
-.debt-form-group { display: flex; flex-direction: column; gap: 4px; }
+.debt-form { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; width: 100%; overflow-x: hidden; }
+.debt-form-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; }
 .debt-form-label {
   font-size: 11px;
   font-weight: 700;
