@@ -143,6 +143,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
         setShareId(id);
       }
       const url = `${window.location.origin}/split/${id}`;
+      onDirtyChange?.(false);
       let copyOk = false;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         try { await navigator.clipboard.writeText(url); copyOk = true; } catch (_) {}
@@ -157,9 +158,17 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
         try { copyOk = document.execCommand('copy'); } catch (_) {}
         document.body.removeChild(ta);
       }
+      if (!copyOk && navigator.share) {
+        try {
+          await navigator.share({ title: billName || 'Split bill', url });
+          copyOk = true;
+        } catch (_) {}
+      }
       if (copyOk) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
+      } else {
+        prompt('Copy this link:', url);
       }
     } finally {
       setSharing(false);
