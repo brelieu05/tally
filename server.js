@@ -56,11 +56,13 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS expenses (
       id          SERIAL PRIMARY KEY,
       amount      NUMERIC(10,2) NOT NULL,
-      category    TEXT NOT NULL,
+      category    TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL DEFAULT '',
       date        DATE NOT NULL,
+      type        TEXT NOT NULL DEFAULT 'expense',
       created_at  TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'expense';
     CREATE TABLE IF NOT EXISTS split_bills (
       id         TEXT PRIMARY KEY,
       data       JSONB NOT NULL,
@@ -240,17 +242,18 @@ app.get('/api/expenses', requireAuth, async (req, res) => {
 });
 
 app.post('/api/expenses', requireAuth, async (req, res) => {
-  const { amount, category, description, date } = req.body;
-  if (!amount || !category || !date) return res.status(400).json({ error: 'Amount, category, date required' });
+  const { amount, category, description, date, type = 'expense' } = req.body;
+  if (!amount || !date) return res.status(400).json({ error: 'Amount and date required' });
+  if (type === 'expense' && !category) return res.status(400).json({ error: 'Category required for expenses' });
   if (isLocal) {
-    const exp = { id: mem.nextExpId++, amount: parseFloat(amount), category, description: description?.trim() || '', date };
+    const exp = { id: mem.nextExpId++, amount: parseFloat(amount), category: category || '', description: description?.trim() || '', date, type };
     mem.expenses.unshift(exp);
     return res.json(exp);
   }
   const { rows } = await pool.query(
-    `INSERT INTO expenses (amount, category, description, date) VALUES ($1, $2, $3, $4)
-     RETURNING id, amount, category, description, date`,
-    [parseFloat(amount), category, description?.trim() || '', date]
+    `INSERT INTO expenses (amount, category, description, date, type) VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, amount, category, description, date, type`,
+    [parseFloat(amount), category || '', description?.trim() || '', date, type]
   );
   res.json(rows[0]);
 });
@@ -273,7 +276,7 @@ app.get('/api/expenses/weekly', requireAuth, async (req, res) => {
     const weekEnd = new Date(week_start);
     weekEnd.setDate(weekEnd.getDate() + 6);
     const weekEndStr = weekEnd.toISOString().slice(0, 10);
-    const exps = mem.expenses.filter(e => e.date >= week_start && e.date <= weekEndStr);
+    const exps = mem.expenses.filter(e => e.date >= week_start && e.date <= weekEndStr && e.type !== 'income');
 
     const byDayMap = {};
     const byCatMap = {};
@@ -293,17 +296,17 @@ app.get('/api/expenses/weekly', requireAuth, async (req, res) => {
   const [byDay, byCategory, total] = await Promise.all([
     pool.query(
       `SELECT date::text, SUM(amount) AS total FROM expenses
-       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days'
+       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'
        GROUP BY date ORDER BY date`, [week_start]
     ),
     pool.query(
       `SELECT category, SUM(amount) AS total, COUNT(*) AS count FROM expenses
-       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days'
+       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'
        GROUP BY category ORDER BY total DESC`, [week_start]
     ),
     pool.query(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
-       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days'`, [week_start]
+       WHERE date >= $1::date AND date <= $1::date + INTERVAL '6 days' AND type = 'expense'`, [week_start]
     ),
   ]);
   res.json({ byDay: byDay.rows, byCategory: byCategory.rows, total: total.rows[0].total });
@@ -316,7 +319,7 @@ app.get('/api/expenses/monthly', requireAuth, async (req, res) => {
   const ym = `${year}-${String(month).padStart(2, '0')}`;
 
   if (isLocal) {
-    const exps = mem.expenses.filter(e => e.date.slice(0, 7) === ym);
+    const exps = mem.expenses.filter(e => e.date.slice(0, 7) === ym && e.type !== 'income');
     const byCatMap = {};
     const byWeekMap = {};
     let total = 0;
@@ -336,14 +339,14 @@ app.get('/api/expenses/monthly', requireAuth, async (req, res) => {
   const [byCategory, byWeek, total] = await Promise.all([
     pool.query(
       `SELECT category, SUM(amount) AS total, COUNT(*) AS count FROM expenses
-       WHERE TO_CHAR(date, 'YYYY-MM') = $1 GROUP BY category ORDER BY total DESC`, [ym]
+       WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense' GROUP BY category ORDER BY total DESC`, [ym]
     ),
     pool.query(
       `SELECT ((EXTRACT(DAY FROM date)::int - 1) / 7) + 1 AS week_num, SUM(amount) AS total
-       FROM expenses WHERE TO_CHAR(date, 'YYYY-MM') = $1 GROUP BY week_num ORDER BY week_num`, [ym]
+       FROM expenses WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense' GROUP BY week_num ORDER BY week_num`, [ym]
     ),
     pool.query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE TO_CHAR(date, 'YYYY-MM') = $1`, [ym]
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND type = 'expense'`, [ym]
     ),
   ]);
   res.json({ byCategory: byCategory.rows, byWeek: byWeek.rows, total: total.rows[0].total });

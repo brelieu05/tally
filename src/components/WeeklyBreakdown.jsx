@@ -54,15 +54,19 @@ export default function WeeklyBreakdown({ categories, token, balance, expenses }
   const isCurrentWeek = toDateStr(monday) === toDateStr(getMondayOfWeek(new Date()));
   const todayStr = toDateStr(new Date());
 
-  const periodEndStr = toDateStr(addDays(monday, 6));
-  const allExpenses = expenses || [];
-  const totalAllExpenses = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
-  const currentBalance = balance !== null ? balance - totalAllExpenses : null;
-  const spentAfterPeriod = balance !== null
-    ? allExpenses.filter(e => e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0)
-    : 0;
-  const balanceAfter  = balance !== null ? currentBalance + spentAfterPeriod : null;
-  const balanceBefore = balance !== null ? balanceAfter + Number(data?.total || 0) : null;
+  const periodStartStr = toDateStr(monday);
+  const periodEndStr   = toDateStr(addDays(monday, 6));
+  const allEntries     = expenses || [];
+  const totalAllSpent  = allEntries.filter(e => e.type !== 'income').reduce((s, e) => s + Number(e.amount), 0);
+  const totalAllIncome = allEntries.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0);
+  const currentBalance = balance !== null ? balance - totalAllSpent + totalAllIncome : null;
+
+  const spentAfterPeriod  = allEntries.filter(e => e.type !== 'income' && e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0);
+  const incomeAfterPeriod = allEntries.filter(e => e.type === 'income'  && e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0);
+  const periodIncome      = allEntries.filter(e => e.type === 'income'  && e.date >= periodStartStr && e.date <= periodEndStr).reduce((s, e) => s + Number(e.amount), 0);
+
+  const balanceAfter  = balance !== null ? currentBalance + spentAfterPeriod - incomeAfterPeriod : null;
+  const balanceBefore = balance !== null ? balanceAfter + Number(data?.total || 0) - periodIncome : null;
 
   const colorFor = (name) => categories.find(c => c.name === name)?.color || '#6B7280';
 

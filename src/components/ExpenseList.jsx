@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faReceipt, faUtensils, faCar, faFilm, faBagShopping,
-  faBolt, faHeartPulse, faTag, faPen,
+  faBolt, faHeartPulse, faTag, faPen, faArrowUp,
 } from '@fortawesome/free-solid-svg-icons';
 import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
@@ -41,8 +41,9 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
   const inputRef = useRef(null);
 
   const colorFor = (name) => categories.find(c => c.name === name)?.color || '#6B7280';
-  const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  const currentBalance = balance !== null ? balance - totalSpent : null;
+  const totalSpent  = expenses.filter(e => e.type !== 'income').reduce((sum, e) => sum + Number(e.amount), 0);
+  const totalIncome = expenses.filter(e => e.type === 'income').reduce((sum, e) => sum + Number(e.amount), 0);
+  const currentBalance = balance !== null ? balance - totalSpent + totalIncome : null;
 
   function startEdit() {
     setDraft(balance !== null ? String(balance) : '');
@@ -99,6 +100,12 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
               <span>Set&nbsp;${Number(balance).toFixed(2)}</span>
               <span className="expense-dot">·</span>
               <span>Spent&nbsp;${totalSpent.toFixed(2)}</span>
+              {totalIncome > 0 && (
+                <>
+                  <span className="expense-dot">·</span>
+                  <span style={{ color: 'var(--green)' }}>+${totalIncome.toFixed(2)}</span>
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -124,7 +131,8 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
       ) : (
         <div className="expense-list">
           {expenses.map(exp => {
-            const color = colorFor(exp.category);
+            const isIncome = exp.type === 'income';
+            const color = isIncome ? '#22C55E' : colorFor(exp.category);
             return (
               <div key={exp.id} className="expense-item">
                 <div
@@ -135,14 +143,14 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
                     color,
                   }}
                 >
-                  <FontAwesomeIcon icon={iconFor(exp.category)} />
+                  <FontAwesomeIcon icon={isIncome ? faArrowUp : iconFor(exp.category)} />
                 </div>
                 <div className="expense-info">
                   <div className="expense-desc">
-                    {exp.description || exp.category}
+                    {isIncome ? (exp.description || 'Income') : (exp.description || exp.category)}
                   </div>
                   <div className="expense-meta">
-                    {exp.description && (
+                    {!isIncome && exp.description && (
                       <>
                         <span className="expense-cat">{exp.category}</span>
                         <span className="expense-dot">·</span>
@@ -152,7 +160,9 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
                   </div>
                 </div>
                 <div className="expense-right">
-                  <span className="expense-amount">{formatAmount(exp.amount)}</span>
+                  <span className={`expense-amount${isIncome ? ' expense-amount--income' : ''}`}>
+                    {isIncome ? '+' : ''}{formatAmount(exp.amount)}
+                  </span>
                   <button
                     className="delete-btn"
                     onClick={() => onDelete(exp.id)}

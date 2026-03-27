@@ -10,6 +10,7 @@ const COLORS = [
 ];
 
 export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyChange }) {
+  const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -24,12 +25,17 @@ export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyCh
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState(COLORS[4]);
 
+  function switchType(newType) {
+    setType(newType);
+    setCategory('');
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!amount || !category) return;
+    if (!amount || (type === 'expense' && !category)) return;
     setSubmitting(true);
     try {
-      await onAdd({ amount: parseFloat(amount), category, description, date });
+      await onAdd({ amount: parseFloat(amount), category: type === 'expense' ? category : '', description, date, type });
       setAmount('');
       setDescription('');
       setDate(today());
@@ -59,9 +65,12 @@ export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyCh
     <>
       <div className="card">
         <div className="card-header">
-          <span className="card-title">Add Expense</span>
+          <div className="type-toggle">
+            <button type="button" className={`type-toggle-btn ${type === 'expense' ? 'active' : ''}`} onClick={() => switchType('expense')}>Expense</button>
+            <button type="button" className={`type-toggle-btn type-toggle-btn--income ${type === 'income' ? 'active' : ''}`} onClick={() => switchType('income')}>Income</button>
+          </div>
           {success && (
-            <span className="badge">
+            <span className={`badge${type === 'income' ? ' badge--income' : ''}`}>
               <FontAwesomeIcon icon={faCheck} style={{ fontSize: 11 }} /> Added
             </span>
           )}
@@ -84,31 +93,33 @@ export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyCh
               />
             </div>
 
-            {/* Category pills */}
-            <div className="category-scroll">
-              {categories.map(cat => (
+            {/* Category pills (expenses only) */}
+            {type === 'expense' && (
+              <div className="category-scroll">
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`category-pill ${category === cat.name ? 'selected' : ''}`}
+                    onClick={() => setCategory(cat.name)}
+                  >
+                    <span
+                      className="cat-dot"
+                      style={{ background: category === cat.name ? 'rgba(255,255,255,0.8)' : cat.color }}
+                    />
+                    {cat.name}
+                  </button>
+                ))}
                 <button
-                  key={cat.id}
                   type="button"
-                  className={`category-pill ${category === cat.name ? 'selected' : ''}`}
-                  onClick={() => setCategory(cat.name)}
+                  className="add-cat-pill"
+                  onClick={() => setShowModal(true)}
                 >
-                  <span
-                    className="cat-dot"
-                    style={{ background: category === cat.name ? 'rgba(255,255,255,0.8)' : cat.color }}
-                  />
-                  {cat.name}
+                  <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
+                  New
                 </button>
-              ))}
-              <button
-                type="button"
-                className="add-cat-pill"
-                onClick={() => setShowModal(true)}
-              >
-                <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
-                New
-              </button>
-            </div>
+              </div>
+            )}
 
             {/* Description + Date */}
             <div className="input-row">
@@ -130,11 +141,16 @@ export default function AddExpense({ categories, onAdd, onAddCategory, onDirtyCh
             </div>
 
             <button
-              className="submit-btn"
+              className={`submit-btn${type === 'income' ? ' submit-btn--income' : ''}`}
               type="submit"
-              disabled={submitting || !amount || !category}
+              disabled={submitting || !amount || (type === 'expense' && !category)}
             >
-              {submitting ? 'Adding…' : `Add ${amount ? `$${parseFloat(amount).toFixed(2)}` : 'Expense'}${category ? ` · ${category}` : ''}`}
+              {submitting
+                ? 'Adding…'
+                : type === 'income'
+                  ? `Add ${amount ? `$${parseFloat(amount).toFixed(2)}` : 'Income'}${description ? ` · ${description}` : ''}`
+                  : `Add ${amount ? `$${parseFloat(amount).toFixed(2)}` : 'Expense'}${category ? ` · ${category}` : ''}`
+              }
             </button>
           </form>
         </div>

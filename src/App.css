@@ -1349,3 +1349,45 @@ input, textarea, select { font-family: inherit; }
   color: var(--text-muted);
   flex-shrink: 0;
 }
+
+/* ── Expense / Income type toggle ────────────────── */
+.type-toggle {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.type-toggle-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background 0.12s, color 0.12s;
+}
+.type-toggle-btn.active {
+  background: var(--orange);
+  color: #fff;
+}
+.type-toggle-btn--income.active {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ── Income entry styling ────────────────────────── */
+.expense-amount--income {
+  color: var(--green);
+}
+.submit-btn--income {
+  background: var(--green) !important;
+}
+.submit-btn--income:hover:not(:disabled) {
+  background: #16a34a !important;
+}
+.badge--income {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}

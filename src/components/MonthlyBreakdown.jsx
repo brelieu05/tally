@@ -49,15 +49,19 @@ export default function MonthlyBreakdown({ categories, token, balance, expenses 
   const totalItems = data?.byCategory?.reduce((s, c) => s + c.count, 0) || 0;
   const weekLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'];
 
-  const periodEndStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
-  const allExpenses = expenses || [];
-  const totalAllExpenses = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
-  const currentBalance = balance !== null ? balance - totalAllExpenses : null;
-  const spentAfterPeriod = balance !== null
-    ? allExpenses.filter(e => e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0)
-    : 0;
-  const balanceAfter  = balance !== null ? currentBalance + spentAfterPeriod : null;
-  const balanceBefore = balance !== null ? balanceAfter + Number(data?.total || 0) : null;
+  const periodStartStr = `${year}-${String(month).padStart(2, '0')}-01`;
+  const periodEndStr   = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+  const allEntries     = expenses || [];
+  const totalAllSpent  = allEntries.filter(e => e.type !== 'income').reduce((s, e) => s + Number(e.amount), 0);
+  const totalAllIncome = allEntries.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0);
+  const currentBalance = balance !== null ? balance - totalAllSpent + totalAllIncome : null;
+
+  const spentAfterPeriod  = allEntries.filter(e => e.type !== 'income' && e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0);
+  const incomeAfterPeriod = allEntries.filter(e => e.type === 'income'  && e.date > periodEndStr).reduce((s, e) => s + Number(e.amount), 0);
+  const periodIncome      = allEntries.filter(e => e.type === 'income'  && e.date >= periodStartStr && e.date <= periodEndStr).reduce((s, e) => s + Number(e.amount), 0);
+
+  const balanceAfter  = balance !== null ? currentBalance + spentAfterPeriod - incomeAfterPeriod : null;
+  const balanceBefore = balance !== null ? balanceAfter + Number(data?.total || 0) - periodIncome : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
