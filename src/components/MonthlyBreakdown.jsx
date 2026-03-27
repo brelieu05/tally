@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { faChartBar } from '@fortawesome/free-regular-svg-icons';
-import { localCache } from '../offlineStore';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -29,20 +28,12 @@ export default function MonthlyBreakdown({ categories, token }) {
   useEffect(() => { fetchData(); }, [year, month]);
 
   async function fetchData() {
-    const key = `monthly_${year}_${month}`;
-    const cached = localCache.getBreakdown(key);
-    if (cached) { setData(cached); setLoading(false); }
-    else setLoading(true);
-
+    setLoading(true);
     try {
       const res = await fetch(`/api/expenses/monthly?year=${year}&month=${month}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = await res.json();
-      localCache.setBreakdown(key, json);
-      setData(json);
-    } catch {
-      // offline — cached data already shown
+      setData(await res.json());
     } finally {
       setLoading(false);
     }

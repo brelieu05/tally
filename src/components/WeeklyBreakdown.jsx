@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar } from '@fortawesome/free-regular-svg-icons';
-import { localCache } from '../offlineStore';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -32,26 +31,18 @@ function formatWeekLabel(monday) {
 
 export default function WeeklyBreakdown({ categories, token }) {
   const [monday, setMonday] = useState(() => getMondayOfWeek(new Date()));
-  const [data, setData]     = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchData(); }, [monday]);
 
   async function fetchData() {
-    const key = `weekly_${toDateStr(monday)}`;
-    const cached = localCache.getBreakdown(key);
-    if (cached) { setData(cached); setLoading(false); }
-    else setLoading(true);
-
+    setLoading(true);
     try {
       const res = await fetch(`/api/expenses/weekly?week_start=${toDateStr(monday)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = await res.json();
-      localCache.setBreakdown(key, json);
-      setData(json);
-    } catch {
-      // offline — cached data already shown
+      setData(await res.json());
     } finally {
       setLoading(false);
     }
