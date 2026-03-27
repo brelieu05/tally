@@ -6,6 +6,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 const CATEGORY_ICONS = {
   food:          faUtensils,
   transport:     faCar,
@@ -35,10 +37,38 @@ function formatAmount(n) {
   return '$' + Number(n).toFixed(2);
 }
 
-export default function ExpenseList({ expenses, categories, onDelete, loading, balance, onBalanceChange }) {
+export default function ExpenseList({ expenses, categories, onDelete, onEdit, loading, balance, onBalanceChange }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef(null);
+  const [editingExp, setEditingExp] = useState(null); // expense being edited
+  const [editDraft, setEditDraft] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  function openEdit(exp) {
+    setEditDraft({
+      amount: String(exp.amount),
+      category: exp.category || '',
+      description: exp.description || '',
+      date: exp.date?.slice(0, 10) || today(),
+      type: exp.type || 'expense',
+    });
+    setEditingExp(exp);
+  }
+
+  async function commitExpEdit(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onEdit(editingExp.id, {
+        ...editDraft,
+        amount: parseFloat(editDraft.amount),
+      });
+      setEditingExp(null);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const colorFor = (name) => categories.find(c => c.name === name)?.color || '#6B7280';
   const totalSpent  = expenses.filter(e => e.type !== 'income').reduce((sum, e) => sum + Number(e.amount), 0);
@@ -165,6 +195,13 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
                   </span>
                   <button
                     className="delete-btn"
+                    onClick={() => openEdit(exp)}
+                    title="Edit"
+                  >
+                    <FontAwesomeIcon icon={faPen} />
+                  </button>
+                  <button
+                    className="delete-btn"
                     onClick={() => onDelete(exp.id)}
                     title="Delete"
                   >
@@ -177,6 +214,81 @@ export default function ExpenseList({ expenses, categories, onDelete, loading, b
         </div>
       )}
     </div>
+
+    {editingExp && (
+      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditingExp(null)}>
+        <div className="modal-sheet">
+          <span className="modal-title">Edit Transaction</span>
+          <form onSubmit={commitExpEdit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="amount-row">
+              <span className="amount-symbol">$</span>
+              <input
+                className="amount-input"
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={editDraft.amount}
+                onChange={e => setEditDraft(d => ({ ...d, amount: e.target.value }))}
+                min="0"
+                step="0.01"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div className="type-toggle">
+              <button type="button" className={`type-toggle-btn ${editDraft.type === 'expense' ? 'active' : ''}`} onClick={() => setEditDraft(d => ({ ...d, type: 'expense', category: '' }))}>Expense</button>
+              <button type="button" className={`type-toggle-btn type-toggle-btn--income ${editDraft.type === 'income' ? 'active' : ''}`} onClick={() => setEditDraft(d => ({ ...d, type: 'income', category: '' }))}>Income</button>
+            </div>
+
+            {editDraft.type === 'expense' && (
+              <div className="category-scroll">
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`category-pill ${editDraft.category === cat.name ? 'selected' : ''}`}
+                    onClick={() => setEditDraft(d => ({ ...d, category: cat.name }))}
+                  >
+                    <span className="cat-dot" style={{ background: editDraft.category === cat.name ? 'rgba(255,255,255,0.8)' : cat.color }} />
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="input-row">
+              <input
+                className="text-input"
+                type="text"
+                placeholder="Note (optional)"
+                value={editDraft.description}
+                onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))}
+              />
+              <input
+                className="text-input"
+                type="date"
+                value={editDraft.date}
+                onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))}
+                style={{ width: 130, flexShrink: 0 }}
+                required
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setEditingExp(null)}>Cancel</button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={saving || !editDraft.amount || (editDraft.type === 'expense' && !editDraft.category)}
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
     </>
   );
 }

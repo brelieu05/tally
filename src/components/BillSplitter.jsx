@@ -11,11 +11,13 @@ function getBillId() {
   return parts[2] || null;
 }
 
-export default function BillSplitter({ embedded = false, onDirtyChange }) {
-  const [billName, setBillName]   = useState('');
+export default function BillSplitter({ embedded = false, onDirtyChange, categories = [], token = '', accountId = null, onExpenseAdded }) {
   const MY_NAME  = import.meta.env.VITE_MY_NAME  || '';
   const MY_VENMO = import.meta.env.VITE_MY_VENMO || '';
   const MY_ZELLE = import.meta.env.VITE_MY_ZELLE || '';
+
+  const [billName, setBillName]   = useState('');
+  const [splitCategory, setSplitCategory] = useState('');
 
   const [people, setPeople]       = useState([MY_NAME]);
   const [items, setItems]         = useState([]);
@@ -157,6 +159,24 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
         setShareId(id);
       }
       const url = `${window.location.origin}/split/${id}`;
+      // Add expense for Brendan's amount if he paid
+      if (paidBy === MY_NAME && grandTotal > 0 && accountId && token) {
+        const myTotal = personTotals.find(p => p.name === MY_NAME)?.total ?? grandTotal;
+        const res = await fetch('/api/expenses', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: parseFloat(myTotal.toFixed(2)),
+            category: splitCategory,
+            description: billName || 'Split bill',
+            date: new Date().toISOString().slice(0, 10),
+            type: 'expense',
+            account_id: accountId,
+          }),
+        });
+        const newExp = await res.json();
+        if (!newExp.error) onExpenseAdded?.(newExp);
+      }
       onDirtyChange?.(false);
       let copyOk = false;
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -489,6 +509,24 @@ export default function BillSplitter({ embedded = false, onDirtyChange }) {
                 </button>
               ))}
             </div>
+            {paidBy === MY_NAME && categories.length > 0 && (
+              <div className="category-scroll" style={{ marginTop: 4 }}>
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`category-pill ${splitCategory === cat.name ? 'selected' : ''}`}
+                    onClick={() => setSplitCategory(prev => prev === cat.name ? '' : cat.name)}
+                  >
+                    <span
+                      className="cat-dot"
+                      style={{ background: splitCategory === cat.name ? 'rgba(255,255,255,0.8)' : cat.color }}
+                    />
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {paidBy && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="split-pct-wrap">

@@ -175,6 +175,17 @@ export default function App() {
     await fetch(`/api/expenses/${id}`, { method: 'DELETE', headers: authHeaders(token) });
   }
 
+  async function handleEdit(id, updates) {
+    const res = await fetch(`/api/expenses/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(token),
+      body: JSON.stringify(updates),
+    });
+    const updated = await res.json();
+    setExpenses(prev => prev.map(e => e.id === id ? updated : e));
+    return updated;
+  }
+
   async function handleAddCategory(cat) {
     const res = await fetch('/api/categories', {
       method: 'POST',
@@ -245,6 +256,7 @@ export default function App() {
               expenses={expenses}
               categories={categories}
               onDelete={handleDelete}
+              onEdit={handleEdit}
               loading={loading && expenses.length === 0}
               balance={balance}
               onBalanceChange={handleBalanceChange}
@@ -260,7 +272,7 @@ export default function App() {
               <button className={`split-subtab ${splitView === 'new' ? 'active' : ''}`} onClick={() => handleSplitViewChange('new')}>New</button>
               <button className={`split-subtab ${splitView === 'history' ? 'active' : ''}`} onClick={() => handleSplitViewChange('history')}>History</button>
             </div>
-            {splitView === 'new'     && <BillSplitter embedded onDirtyChange={setSplitDirty} />}
+            {splitView === 'new'     && <BillSplitter embedded onDirtyChange={setSplitDirty} categories={categories} token={token} accountId={currentAccountId} onExpenseAdded={exp => setExpenses(prev => [exp, ...prev])} />}
             {splitView === 'history' && <SplitHistory token={token} />}
           </>
         )}

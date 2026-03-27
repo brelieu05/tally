@@ -388,6 +388,22 @@ app.post('/api/expenses', requireAuth, async (req, res) => {
   res.json(rows[0]);
 });
 
+app.put('/api/expenses/:id', requireAuth, async (req, res) => {
+  const { amount, category, description, date, type } = req.body;
+  const id = parseInt(req.params.id);
+  if (isLocal) {
+    const idx = mem.expenses.findIndex(e => e.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+    mem.expenses[idx] = { ...mem.expenses[idx], amount: parseFloat(amount), category: category ?? '', description: description ?? '', date, type: type ?? 'expense' };
+    return res.json(mem.expenses[idx]);
+  }
+  const { rows } = await pool.query(
+    'UPDATE expenses SET amount=$1, category=$2, description=$3, date=$4, type=$5 WHERE id=$6 RETURNING *',
+    [parseFloat(amount), category ?? '', description ?? '', date, type ?? 'expense', id]
+  );
+  res.json(rows[0]);
+});
+
 app.delete('/api/expenses/:id', requireAuth, async (req, res) => {
   if (isLocal) {
     mem.expenses = mem.expenses.filter(e => e.id !== parseInt(req.params.id));
