@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faScissors, faLink, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faScissors, faLink, faCheck, faCamera, faXmark, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
 const TIP_PRESETS = [15, 18, 20];
@@ -39,6 +39,14 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   const [copied, setCopied]         = useState(false);
   const [sharing, setSharing]       = useState(false);
   const [loadError, setLoadError]   = useState(false);
+
+  // ── Receipt scanner ───────────────────────────────────────────
+  const [scannerOpen, setScannerOpen]   = useState(false);
+  const [scanImage, setScanImage]       = useState(null); // { dataUrl, base64, mimeType }
+  const [scanLoading, setScanLoading]   = useState(false);
+  const [scanResult, setScanResult]     = useState(null);
+  const [scanError, setScanError]       = useState('');
+  const fileInputRef                    = useRef(null);
 
   useEffect(() => {
     onDirtyChange?.(billName !== '' || people.length > 1 || items.length > 0);
@@ -106,6 +114,86 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
 
   function removeItem(id) {
     setItems(prev => prev.filter(item => item.id !== id));
+  }
+
+  // ── Receipt scanner helpers ───────────────────────────────────
+  function compressImage(file, maxPx = 1200, quality = 0.82) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+      };
+      img.src = url;
+    });
+  }
+
+  async function handleImageSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    setScanResult(null);
+    setScanError('');
+    const compressed = await compressImage(file);
+    setScanImage(compressed);
+  }
+
+  async function scanReceipt() {
+    if (!scanImage) return;
+    setScanLoading(true);
+    setScanError('');
+    try {
+      const res = await fetch('/api/scan-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: scanImage.base64, mimeType: scanImage.mimeType }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setScanResult(data);
+    } catch (err) {
+      setScanError(err.message || 'Failed to scan receipt');
+    } finally {
+      setScanLoading(false);
+    }
+  }
+
+  function applyScannedItems() {
+    if (!scanResult) return;
+    if (scanResult.billName && !billName) setBillName(scanResult.billName);
+    if (scanResult.items?.length) {
+      setItems(prev => [
+        ...prev,
+        ...scanResult.items.map(item => ({
+          id: Date.now() + Math.random(),
+          name: item.name,
+          price: parseFloat(item.price) || 0,
+          assignedTo: [],
+        })),
+      ]);
+    }
+    if (scanResult.tax) { setTax(scanResult.tax); setTaxMode(scanResult.taxMode || '$'); }
+    if (scanResult.tip) { setTip(scanResult.tip); setTipMode(scanResult.tipMode || '$'); }
+    setScannerOpen(false);
+    setScanImage(null);
+    setScanResult(null);
+    setScanError('');
+  }
+
+  function closeScanner() {
+    setScannerOpen(false);
+    setScanImage(null);
+    setScanResult(null);
+    setScanError('');
   }
 
   function toggleAssignment(itemId, person) {
@@ -320,11 +408,90 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         </div>
       </div>
 
+      {/* ── Receipt scanner modal ──────────────────────────── */}
+      {scannerOpen && (
+        <div className="receipt-overlay" onClick={closeScanner}>
+          <div className="receipt-modal" onClick={e => e.stopPropagation()}>
+            <div className="receipt-modal-header">
+              <span><FontAwesomeIcon icon={faReceipt} style={{ marginRight: 8 }} />Scan Receipt</span>
+              <button className="receipt-close-btn" onClick={closeScanner}>
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            {!scanImage ? (
+              <label className="receipt-upload-area">
+                <FontAwesomeIcon icon={faCamera} className="receipt-camera-icon" />
+                <span className="receipt-upload-label">Take a photo or upload image</span>
+                <span className="receipt-upload-hint">Supports JPG, PNG, WEBP</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageSelect}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            ) : (
+              <div className="receipt-preview-wrap">
+                <img src={scanImage.dataUrl} className="receipt-preview-img" alt="Receipt preview" />
+                <div className="receipt-preview-actions">
+                  <button className="receipt-retake-btn" onClick={() => { setScanImage(null); setScanResult(null); setScanError(''); }}>
+                    Retake
+                  </button>
+                  <button className="receipt-scan-btn" onClick={scanReceipt} disabled={scanLoading}>
+                    {scanLoading ? (
+                      <><span className="receipt-spinner" />Scanning…</>
+                    ) : 'Scan'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {scanError && <div className="receipt-scan-error">{scanError}</div>}
+
+            {scanResult && (
+              <div className="receipt-results">
+                <div className="receipt-results-title">
+                  {scanResult.billName && <strong>{scanResult.billName}</strong>}
+                  <span>{scanResult.items?.length || 0} item{scanResult.items?.length !== 1 ? 's' : ''} found</span>
+                </div>
+                <div className="receipt-results-list">
+                  {scanResult.items?.map((item, i) => (
+                    <div key={i} className="receipt-result-row">
+                      <span className="receipt-result-name">{item.name}</span>
+                      <span className="receipt-result-price">${parseFloat(item.price).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {(scanResult.tax || scanResult.tip) && (
+                    <div className="receipt-result-extras">
+                      {scanResult.tax && <span>Tax: ${parseFloat(scanResult.tax).toFixed(2)}</span>}
+                      {scanResult.tip && <span>Tip: ${parseFloat(scanResult.tip).toFixed(2)}</span>}
+                    </div>
+                  )}
+                </div>
+                <button className="receipt-apply-btn" onClick={applyScannedItems}>
+                  Apply to Bill
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Items ──────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
           <span className="card-title">Items</span>
           {items.length > 0 && <span className="badge">{items.length}</span>}
+          <button
+            className="receipt-scan-trigger"
+            onClick={() => setScannerOpen(true)}
+            title="Scan receipt"
+          >
+            <FontAwesomeIcon icon={faCamera} />
+          </button>
         </div>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="split-row">

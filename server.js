@@ -16,7 +16,9 @@ const APP_PASSWORD = process.env.APP_PASSWORD || 'password';
 
 const isLocal = !process.env.DATABASE_URL;
 
-app.use(express.json());
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || null;
+
+app.use(express.json({ limit: '10mb' }));
 
 // ── In-memory store (local dev) ────────────────────────────────
 const mem = {
@@ -204,6 +206,52 @@ app.get('/api/split/:id', async (req, res) => {
   const { rows } = await pool.query('SELECT data FROM split_bills WHERE id = $1', [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0].data);
+});
+
+// ── Receipt Scanning ───────────────────────────────────────────
+app.post('/api/scan-receipt', async (req, res) => {
+  if (!OPENROUTER_API_KEY) {
+    return res.status(503).json({ error: 'Receipt scanning not configured. Add OPENROUTER_API_KEY to .env (get a free key at openrouter.ai)' });
+  }
+  const { imageBase64, mimeType } = req.body;
+  if (!imageBase64 || !mimeType) return res.status(400).json({ error: 'Missing image data' });
+
+  const safeMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)
+    ? mimeType : 'image/jpeg';
+
+  const prompt = `Extract all purchased line items from this receipt. Return ONLY a valid JSON object with no markdown, no code fences, and no extra text. Use this exact structure:
+{"billName":"restaurant or store name if visible, else empty string","items":[{"name":"item name","price":0.00}],"tax":"tax dollar amount as string or empty string","taxMode":"$","tip":"tip dollar amount as string or empty string","tipMode":"$"}
+Rules: items array must contain every individual purchased item with its price. Do NOT include subtotal, tax, tip, or grand total rows as items. Prices must be plain numbers (e.g. 12.99 not "$12.99").`;
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'nvidia/nemotron-nano-12b-v2-vl:free',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${safeMime};base64,${imageBase64}` } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || JSON.stringify(data));
+
+    const text = data.choices[0].message.content.trim();
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(cleaned);
+    res.json(parsed);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to parse receipt: ' + err.message });
+  }
 });
 
 // ── Loans ──────────────────────────────────────────────────────
