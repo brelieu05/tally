@@ -117,20 +117,49 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   }
 
   // ── Receipt scanner helpers ───────────────────────────────────
-  function handleImageSelect(e) {
+  function preprocessImage(file, maxPx = 1800) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        // Grayscale + contrast boost via pixel manipulation
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const d = imageData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          // Grayscale
+          const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          // Contrast stretch: factor > 1 pushes darks darker and lights lighter
+          const contrast = 1.4;
+          const adjusted = Math.min(255, Math.max(0, contrast * (gray - 128) + 128));
+          d[i] = d[i + 1] = d[i + 2] = adjusted;
+        }
+        ctx.putImageData(imageData, 0, 0);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        resolve({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+      };
+      img.src = url;
+    });
+  }
+
+  async function handleImageSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
-      const base64 = dataUrl.split(',')[1];
-      setScanImage({ dataUrl, base64, mimeType: file.type });
-      setScanResult(null);
-      setScanError('');
-    };
-    reader.readAsDataURL(file);
-    // Reset input so the same file can be re-selected
     e.target.value = '';
+    setScanResult(null);
+    setScanError('');
+    const processed = await preprocessImage(file);
+    setScanImage(processed);
   }
 
   async function scanReceipt() {
