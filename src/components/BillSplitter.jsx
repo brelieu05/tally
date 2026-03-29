@@ -117,34 +117,20 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   }
 
   // ── Receipt scanner helpers ───────────────────────────────────
-  function compressImage(file, maxPx = 1200, quality = 0.82) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
-      };
-      img.src = url;
-    });
-  }
-
-  async function handleImageSelect(e) {
+  function handleImageSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      const base64 = dataUrl.split(',')[1];
+      setScanImage({ dataUrl, base64, mimeType: file.type });
+      setScanResult(null);
+      setScanError('');
+    };
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be re-selected
     e.target.value = '';
-    setScanResult(null);
-    setScanError('');
-    const compressed = await compressImage(file);
-    setScanImage(compressed);
   }
 
   async function scanReceipt() {
