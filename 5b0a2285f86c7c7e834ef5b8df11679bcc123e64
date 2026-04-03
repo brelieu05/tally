@@ -1,0 +1,23 @@
+README.md
+  e144a4725964fa68 1-4,6-56,65-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "5b0a2285f86c7c7e834ef5b8df11679bcc123e64",
+  "prompts": {
+    "e144a4725964fa68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e73196af-13c2-423b-9c5b-027b4fa7f16c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 154,
+      "total_deletions": 4,
+      "accepted_lines": 149,
+      "overriden_lines": 1
+    }
+  }
+}
