@@ -73,7 +73,7 @@ Built for personal use after realizing every finance app wants a subscription, y
 <summary><strong>Bill Splitter</strong></summary>
 <br/>
 <p align="center">
-  <img src="docs/screenshot-split.png" width="500" alt="Bill splitter" />
+  <img src="docs/screenshot-split.png" width="860" alt="Bill splitter" />
 </p>
 </details>
 
