@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img src="public/favicon.svg" width="36" height="36" alt="tally logo" /> tally
+<h1 align="center"><img src="public/favicon.svg" width="36" height="36" alt="tally logo" style="vertical-align: middle;" /> &nbsp;tally</h1>
 
 **I refused to pay $10/month for a budgeting app. Now I pay $10/month to host my own server and my spending habits aren't fixed.**
 
