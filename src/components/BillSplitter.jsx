@@ -27,6 +27,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   const [tipMode, setTipMode]     = useState('%');
   const [discount, setDiscount]           = useState('');
   const [discountMode, setDiscountMode]   = useState('%');
+  const [showTaxTip, setShowTaxTip]       = useState(false);
   const [showDiscount, setShowDiscount]   = useState(false);
   const [paidBy, setPaidBy]   = useState('');
   const [venmo, setVenmo]     = useState('');
@@ -91,6 +92,10 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         setTipMode(data.tipMode           ?? '%');
         setDiscount(data.discount         ?? '');
         setDiscountMode(data.discountMode ?? '%');
+        const loadedTax = parseFloat(data.tax) || 0;
+        const loadedTip = parseFloat(data.tip) || 0;
+        if (loadedTax > 0 || loadedTip > 0) setShowTaxTip(true);
+        if (parseFloat(data.discount) > 0) setShowDiscount(true);
         setPaidBy(data.paidBy ?? '');
         setVenmo(data.venmo   ?? '');
         setZelle(data.zelle   ?? '');
@@ -108,6 +113,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   }
 
   function removePerson(name) {
+    if (savingContact === name) setSavingContact(null);
     setPeople(prev => prev.filter(p => p !== name));
     setItems(prev => prev.map(item => ({
       ...item,
@@ -131,6 +137,21 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
       localStorage.setItem('split_contacts', JSON.stringify(next));
       return next;
     });
+  }
+
+  function formatPhone(value) {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    if (digits.length === 0) return '';
+    if (digits.length <= 3) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
+  function handleZelleChange(raw, setter) {
+    // If it contains @, a letter before @, or non-digit non-formatting chars → treat as email, pass through
+    const isEmail = raw.includes('@') || /[a-zA-Z]/.test(raw.replace(/^\+?[\d\s\-().]+$/, ''));
+    if (isEmail) { setter(raw); return; }
+    setter(formatPhone(raw));
   }
 
   function openSaveForm(name) {
@@ -374,12 +395,12 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
     subtotal
   );
   const discounted   = subtotal - discountAmt;
-  const taxAmt       = taxMode === '$'
-    ? (parseFloat(tax) || 0)
-    : discounted * (parseFloat(tax) || 0) / 100;
-  const tipAmt       = tipMode === '$'
-    ? (parseFloat(tip) || 0)
-    : discounted * (parseFloat(tip) || 0) / 100;
+  const taxAmt       = showTaxTip
+    ? (taxMode === '$' ? (parseFloat(tax) || 0) : discounted * (parseFloat(tax) || 0) / 100)
+    : 0;
+  const tipAmt       = showTaxTip
+    ? (tipMode === '$' ? (parseFloat(tip) || 0) : discounted * (parseFloat(tip) || 0) / 100)
+    : 0;
   const grandTotal   = discounted + taxAmt + tipAmt;
 
   const personTotals = people.map(person => {
@@ -522,7 +543,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                   className="text-input split-payment-input"
                   placeholder="phone or email"
                   value={saveZelle}
-                  onChange={e => setSaveZelle(e.target.value)}
+                  onChange={e => handleZelleChange(e.target.value, setSaveZelle)}
                   onKeyDown={e => e.key === 'Enter' && persistContact(savingContact, saveVenmo, saveZelle)}
                 />
               </div>
@@ -684,10 +705,13 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
 
       {/* ── Tax & Tip ──────────────────────────────────────── */}
       <div className="card">
-        <div className="card-header">
-          <span className="card-title">Tax & Tip</span>
-        </div>
-        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <button className="split-discount-toggle card-header" style={{ width: '100%' }} onClick={() => setShowTaxTip(v => !v)}>
+          <span className="card-title">{showTaxTip ? '▾' : '▸'} Tax & Tip</span>
+          {showTaxTip && (taxAmt > 0 || tipAmt > 0) && (
+            <span className="split-discount-badge">+${(taxAmt + tipAmt).toFixed(2)}</span>
+          )}
+        </button>
+        {showTaxTip && <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="split-row" style={{ gap: 12, alignItems: 'flex-start' }}>
             {/* Tax */}
             <div style={{ flex: 1 }}>
@@ -742,7 +766,44 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
             </div>
           </div>
 
-          {subtotal > 0 && (
+        </div>}
+      </div>
+
+      {/* ── Discount ───────────────────────────────────────── */}
+      <div className="card">
+        <button className="split-discount-toggle card-header" style={{ width: '100%' }} onClick={() => setShowDiscount(v => !v)}>
+          <span className="card-title">{showDiscount ? '▾' : '▸'} Discount</span>
+          {discountAmt > 0 && <span className="split-discount-badge">−${discountAmt.toFixed(2)}</span>}
+        </button>
+        {showDiscount && (
+          <div className="card-body">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label className="split-label" style={{ marginBottom: 0 }}>Discount</label>
+              <div className="split-mode-toggle">
+                <button className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`} onClick={() => { setDiscountMode('%'); setDiscount(''); }}>%</button>
+                <button className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`} onClick={() => { setDiscountMode('$'); setDiscount(''); }}>$</button>
+              </div>
+            </div>
+            <div className="split-pct-wrap">
+              {discountMode === '$' && <span className="split-price-sym">$</span>}
+              <input
+                className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
+                type="number" min="0" step={discountMode === '%' ? '0.1' : '0.01'} placeholder="0"
+                value={discount} onChange={e => setDiscount(e.target.value)}
+              />
+              {discountMode === '%' && <span className="split-pct-sym">%</span>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Totals ─────────────────────────────────────────── */}
+      {subtotal > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Total</span>
+          </div>
+          <div className="card-body">
             <div className="split-totals-grid">
               <span className="split-totals-label">Subtotal</span>
               <span className="split-totals-value">${subtotal.toFixed(2)}</span>
@@ -767,36 +828,9 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
               <span className="split-grand-label">Total</span>
               <span className="split-grand-value">${grandTotal.toFixed(2)}</span>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Discount ───────────────────────────────────────── */}
-      <div className="card">
-        <button className="split-discount-toggle card-header" style={{ width: '100%' }} onClick={() => setShowDiscount(v => !v)}>
-          <span className="card-title">{showDiscount ? '▾' : '▸'} Discount</span>
-          {discountAmt > 0 && <span className="split-discount-badge">−${discountAmt.toFixed(2)}</span>}
-        </button>
-        {showDiscount && (
-          <div className="card-body">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
-              <div className="split-mode-toggle">
-                <button className={`split-mode-btn ${discountMode === '%' ? 'active' : ''}`} onClick={() => { setDiscountMode('%'); setDiscount(''); }}>%</button>
-                <button className={`split-mode-btn ${discountMode === '$' ? 'active' : ''}`} onClick={() => { setDiscountMode('$'); setDiscount(''); }}>$</button>
-              </div>
-            </div>
-            <div className="split-pct-wrap">
-              {discountMode === '$' && <span className="split-price-sym">$</span>}
-              <input
-                className={`text-input${discountMode === '$' ? ' split-price-input' : ''}`}
-                type="number" min="0" step={discountMode === '%' ? '0.1' : '0.01'} placeholder="0"
-                value={discount} onChange={e => setDiscount(e.target.value)}
-              />
-              {discountMode === '%' && <span className="split-pct-sym">%</span>}
-            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Paid by ────────────────────────────────────────── */}
       {people.length > 0 && (
@@ -852,7 +886,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                     className="text-input split-payment-input"
                     placeholder="phone or email"
                     value={zelle}
-                    onChange={e => setZelle(e.target.value)}
+                    onChange={e => handleZelleChange(e.target.value, setZelle)}
                   />
                 </div>
               </div>
@@ -890,16 +924,12 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                       <span style={{ color: 'var(--text-muted)' }}>no items assigned</span>
                     )}
                   </div>
-                  {!isPayer && paidBy && (venmo || zelle) && p.total > 0 && (
+                  {isPayer && (venmo || zelle) && (
                     <div className="split-pay-links">
                       {venmo && (
-                        <a
-                          className="split-pay-btn split-pay-venmo"
-                          href={`https://venmo.com/${venmo.replace(/^@/, '')}?txn=pay&amount=${p.total.toFixed(2)}&note=Bill%20split`}
-                          target="_blank" rel="noreferrer"
-                        >
+                        <span className="split-pay-btn split-pay-venmo">
                           Venmo {venmo.startsWith('@') ? venmo : `@${venmo}`}
-                        </a>
+                        </span>
                       )}
                       {zelle && (
                         <span className="split-pay-btn split-pay-zelle">
