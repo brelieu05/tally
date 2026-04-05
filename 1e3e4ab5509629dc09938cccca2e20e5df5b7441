@@ -1,0 +1,25 @@
+src/components/BillSplitter.jsx
+  29758775fd5e278e 37-45,68-71,118-143,441-482,489-497,499,501-532,841,843-846
+src/App.css
+  29758775fd5e278e 707,718-788,1100-1108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "1e3e4ab5509629dc09938cccca2e20e5df5b7441",
+  "prompts": {
+    "29758775fd5e278e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09cf06e8-c94d-4596-b472-40c2984f6cf8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 255,
+      "total_deletions": 60,
+      "accepted_lines": 213,
+      "overriden_lines": 1
+    }
+  }
+}
