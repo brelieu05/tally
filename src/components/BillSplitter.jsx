@@ -44,6 +44,8 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   const [saveVenmo, setSaveVenmo]         = useState('');
   const [saveZelle, setSaveZelle]         = useState('');
 
+  const [paidStatus, setPaidStatus] = useState({}); // { [personName]: true } for people who paid
+
   const [shareId, setShareId]       = useState(getBillId); // reuse if already shared
   const [splitExpenseId, setSplitExpenseId] = useState(null); // expense created from this split
   const [copied, setCopied]         = useState(false);
@@ -99,6 +101,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         setPaidBy(data.paidBy ?? '');
         setVenmo(data.venmo   ?? '');
         setZelle(data.zelle   ?? '');
+        setPaidStatus(data.paidStatus ?? {});
         onBillLoaded?.();
       })
       .catch(() => setLoadError(true));
@@ -287,7 +290,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   // ── Auto-save when share link exists ──────────────────────────
   useEffect(() => {
     if (!shareId) return;
-    const payload = { billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle };
+    const payload = { billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle, paidStatus };
     const timer = setTimeout(() => {
       fetch(`/api/split/${shareId}`, {
         method: 'PUT',
@@ -296,13 +299,13 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
       });
     }, 800);
     return () => clearTimeout(timer);
-  }, [shareId, billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle]);
+  }, [shareId, billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle, paidStatus]);
 
   // ── Share ─────────────────────────────────────────────────────
   async function copyShareLink() {
     setSharing(true);
     try {
-      const payload = { billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle };
+      const payload = { billName, people, items, tax, taxMode, tip, tipMode, discount, discountMode, paidBy, venmo, zelle, paidStatus };
       let id = shareId;
       if (id) {
         // Update existing record
@@ -836,7 +839,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
       {people.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Paid by</span>
+            <span className="card-title">Bill Fronted by</span>
           </div>
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="split-chips" style={{ marginTop: 0 }}>
@@ -904,13 +907,22 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
           </div>
           {personTotals.map(p => {
             const isPayer = paidBy === p.name;
+            const hasPaid = !!paidStatus[p.name];
             return (
-              <div key={p.name} className={`split-person-row ${isPayer ? 'split-person-payer' : ''}`}>
+              <div key={p.name} className={`split-person-row ${isPayer || hasPaid ? 'split-person-payer' : ''}`}>
                 <div className="split-person-avatar">{p.name[0].toUpperCase()}</div>
                 <div className="split-person-info">
                   <div className="split-person-name">
                     {p.name}
                     {isPayer && <span className="split-payer-tag">paid</span>}
+                    {!isPayer && (
+                      <button
+                        className={`split-mark-paid-btn ${hasPaid ? 'split-mark-paid-btn--done' : ''}`}
+                        onClick={() => setPaidStatus(prev => ({ ...prev, [p.name]: !prev[p.name] }))}
+                      >
+                        {hasPaid ? '✓ PAID' : '○ UNPAID'}
+                      </button>
+                    )}
                   </div>
                   <div className="split-person-breakdown">
                     {p.subtotal > 0 ? (
@@ -939,9 +951,13 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                     </div>
                   )}
                 </div>
-                <div className={`split-person-total ${isPayer ? 'split-payer-total' : ''}`}>
-                  {isPayer ? 'covered' : `$${p.total.toFixed(2)}`}
-                </div>
+                {isPayer ? (
+                  <div className="split-person-total split-payer-total">covered</div>
+                ) : (
+                  <div className={`split-person-total ${hasPaid ? 'split-total-settled' : ''}`}>
+                    ${p.total.toFixed(2)}
+                  </div>
+                )}
               </div>
             );
           })}
