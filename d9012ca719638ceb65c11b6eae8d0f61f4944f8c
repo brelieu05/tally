@@ -1,0 +1,36 @@
+package.json
+  10d05145cab02b4e 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "d9012ca719638ceb65c11b6eae8d0f61f4944f8c",
+  "prompts": {
+    "10d05145cab02b4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81988e84-9f43-4909-aeb4-0a3a3eb05786",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "29758775fd5e278e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09cf06e8-c94d-4596-b472-40c2984f6cf8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
