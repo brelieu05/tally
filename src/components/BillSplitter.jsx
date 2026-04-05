@@ -262,6 +262,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         const data = await res.json();
         id = data.id;
         setShareId(id);
+        window.history.replaceState(null, '', `/split/${id}`);
       }
       const url = `${window.location.origin}/split/${id}`;
       // Add or update expense for Brendan's share if he paid
