@@ -703,6 +703,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: 600;
   color: var(--orange-hover);
 }
+.split-chip--unsaved { border: 2.5px dashed var(--orange-border); }
+
 .chip-remove {
   font-size: 17px;
   line-height: 1;
@@ -712,6 +714,77 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transition: opacity 0.1s;
 }
 .chip-remove:hover { opacity: 1; }
+
+/* ── Contact autocomplete ───────────────────────────── */
+.contact-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  overflow: hidden;
+}
+.contact-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.contact-suggestion-item:last-child { border-bottom: none; }
+.contact-suggestion-item:hover { background: var(--orange-light); }
+.contact-suggestion-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.contact-suggestion-detail { font-size: 12px; color: var(--text-muted); }
+
+/* ── Contact save form ──────────────────────────────── */
+.contact-save-form {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.contact-save-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.contact-save-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.contact-save-cancel {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.contact-save-cancel:hover { background: var(--border); }
+.contact-save-confirm {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  background: var(--orange);
+  color: #fff;
+}
+.contact-save-confirm:hover { background: var(--orange-hover); }
 
 .split-price-wrap {
   position: relative;
@@ -1024,6 +1097,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   width: 36px;
 }
 .split-payment-input { padding-left: 54px !important; }
+.split-payment-at {
+  position: absolute;
+  left: 58px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  pointer-events: none;
+}
+.split-payment-input--venmo { padding-left: 72px !important; }
 
 .split-payer-tag {
   display: inline-block;

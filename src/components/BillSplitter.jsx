@@ -34,6 +34,15 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   const [newPerson, setNewPerson] = useState('');
   const [newName, setNewName]     = useState('');
   const [newPrice, setNewPrice]   = useState('');
+  // ── Saved contacts ────────────────────────────────────────
+  const [savedContacts, setSavedContacts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('split_contacts') || '[]'); }
+    catch { return []; }
+  });
+  const [savingContact, setSavingContact] = useState(null); // name of person whose save form is open
+  const [saveVenmo, setSaveVenmo]         = useState('');
+  const [saveZelle, setSaveZelle]         = useState('');
+
   const [shareId, setShareId]       = useState(getBillId); // reuse if already shared
   const [splitExpenseId, setSplitExpenseId] = useState(null); // expense created from this split
   const [copied, setCopied]         = useState(false);
@@ -56,6 +65,10 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
     if (paidBy === MY_NAME) {
       if (MY_VENMO) setVenmo(MY_VENMO);
       if (MY_ZELLE) setZelle(MY_ZELLE);
+    } else if (paidBy) {
+      const contact = savedContacts.find(c => c.name === paidBy);
+      setVenmo(contact?.venmo || '');
+      setZelle(contact?.zelle || '');
     } else {
       setVenmo('');
       setZelle('');
@@ -100,6 +113,32 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
       ...item,
       assignedTo: item.assignedTo.filter(p => p !== name),
     })));
+  }
+
+  // ── Saved contacts ────────────────────────────────────────────
+  function persistContact(name, v, z) {
+    setSavedContacts(prev => {
+      const next = [...prev.filter(c => c.name !== name), { name, venmo: v.trim(), zelle: z.trim() }];
+      localStorage.setItem('split_contacts', JSON.stringify(next));
+      return next;
+    });
+    setSavingContact(null);
+  }
+
+  function removeContact(name) {
+    setSavedContacts(prev => {
+      const next = prev.filter(c => c.name !== name);
+      localStorage.setItem('split_contacts', JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function openSaveForm(name) {
+    const existing = savedContacts.find(c => c.name === name);
+    const v = existing?.venmo || '';
+    setSaveVenmo(v && !v.startsWith('@') ? '@' + v : v);
+    setSaveZelle(existing?.zelle || '');
+    setSavingContact(prev => prev === name ? null : name);
   }
 
   // ── Items ─────────────────────────────────────────────────────
@@ -399,26 +438,98 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
           <div style={{ marginLeft: 'auto' }}>{shareBtn}</div>
         </div>
         <div className="card-body">
-          <div className="split-row">
-            <input
-              className="text-input"
-              placeholder="Name"
-              value={newPerson}
-              onChange={e => setNewPerson(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addPerson()}
-            />
+          {/* Name input with autocomplete */}
+          <div className="split-row" style={{ position: 'relative' }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <input
+                className="text-input"
+                placeholder="Name"
+                value={newPerson}
+                onChange={e => setNewPerson(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addPerson()}
+                autoComplete="off"
+                style={{ width: '100%' }}
+              />
+              {(() => {
+                const suggestions = newPerson.trim().length > 0
+                  ? savedContacts.filter(c =>
+                      c.name.toLowerCase().includes(newPerson.toLowerCase()) &&
+                      !people.includes(c.name)
+                    )
+                  : [];
+                return suggestions.length > 0 ? (
+                  <div className="contact-suggestions">
+                    {suggestions.map(c => (
+                      <button
+                        key={c.name}
+                        className="contact-suggestion-item"
+                        onMouseDown={() => {
+                          setPeople(prev => prev.includes(c.name) ? prev : [...prev, c.name]);
+                          setNewPerson('');
+                        }}
+                      >
+                        <span className="contact-suggestion-name">{c.name}</span>
+                        {(c.venmo || c.zelle) && (
+                          <span className="contact-suggestion-detail">
+                            {c.venmo ? `@${c.venmo.replace(/^@/, '')}` : ''}{c.venmo && c.zelle ? ' · ' : ''}{c.zelle}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+            </div>
             <button className="split-add-btn" onClick={addPerson} disabled={!newPerson.trim()}>
               <FontAwesomeIcon icon={faPlus} />
             </button>
           </div>
           {people.length > 0 && (
             <div className="split-chips">
-              {people.map(p => (
-                <span key={p} className="split-chip">
+              {people.map(p => {
+                const isSaved = p === MY_NAME || savedContacts.some(c => c.name === p);
+                return (
+                <span
+                  key={p}
+                  className={`split-chip${!isSaved ? ' split-chip--unsaved' : ''}`}
+                  onClick={() => p !== MY_NAME && openSaveForm(p)}
+                  style={p !== MY_NAME ? { cursor: 'pointer' } : {}}
+                >
                   {p}
-                  <button className="chip-remove" onClick={() => removePerson(p)}>×</button>
+                  <button className="chip-remove" onClick={e => { e.stopPropagation(); removePerson(p); }}>×</button>
                 </span>
-              ))}
+                );
+              })}
+            </div>
+          )}
+          {savingContact && (
+            <div className="contact-save-form">
+              <div className="contact-save-title">Save "{savingContact}"</div>
+              <div className="split-pct-wrap">
+                <span className="split-payment-prefix">Venmo</span>
+                <span className="split-payment-at">@</span>
+                <input
+                  className="text-input split-payment-input split-payment-input--venmo"
+                  placeholder="username"
+                  value={saveVenmo.replace(/^@/, '')}
+                  onChange={e => { const v = e.target.value.replace(/^@+/, ''); setSaveVenmo(v ? '@' + v : ''); }}
+                  autoFocus
+                />
+              </div>
+              <div className="split-pct-wrap" style={{ marginTop: 8 }}>
+                <span className="split-payment-prefix">Zelle</span>
+                <input
+                  className="text-input split-payment-input"
+                  placeholder="phone or email"
+                  value={saveZelle}
+                  onChange={e => setSaveZelle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && persistContact(savingContact, saveVenmo, saveZelle)}
+                />
+              </div>
+              <div className="contact-save-actions">
+                <button className="contact-save-cancel" onClick={() => setSavingContact(null)}>Cancel</button>
+                <button className="contact-save-confirm" onClick={() => persistContact(savingContact, saveVenmo, saveZelle)}>Save</button>
+              </div>
             </div>
           )}
         </div>
@@ -727,11 +838,12 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="split-pct-wrap">
                   <span className="split-payment-prefix">Venmo</span>
+                  <span className="split-payment-at">@</span>
                   <input
-                    className="text-input split-payment-input"
-                    placeholder="@username"
-                    value={venmo}
-                    onChange={e => setVenmo(e.target.value)}
+                    className="text-input split-payment-input split-payment-input--venmo"
+                    placeholder="username"
+                    value={venmo.replace(/^@/, '')}
+                    onChange={e => { const v = e.target.value.replace(/^@+/, ''); setVenmo(v ? '@' + v : ''); }}
                   />
                 </div>
                 <div className="split-pct-wrap">
