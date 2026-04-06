@@ -1,0 +1,25 @@
+src/App.css
+  9b0893deb664be34 1903,1907-1923,1926
+src/components/BillSplitter.jsx
+  9b0893deb664be34 3,62,575-600,602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "b1333cc3d4a6b9457684388522a3966a333e294d",
+  "prompts": {
+    "9b0893deb664be34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15d73d69-75af-43ba-987e-17b80d8ce954",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 48,
+      "total_deletions": 17,
+      "accepted_lines": 48,
+      "overriden_lines": 0
+    }
+  }
+}
