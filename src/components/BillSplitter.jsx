@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faScissors, faLink, faCheck, faCamera, faXmark, faReceipt } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faScissors, faLink, faCheck, faCamera, faXmark, faReceipt, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
 const TIP_PRESETS = [15, 18, 20];
@@ -59,6 +59,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
   const [scanResult, setScanResult]     = useState(null);
   const [scanError, setScanError]       = useState('');
   const fileInputRef                    = useRef(null);
+  const uploadInputRef                  = useRef(null);
 
   useEffect(() => {
     onDirtyChange?.(billName !== '' || people.length > 1 || items.length > 0);
@@ -571,19 +572,34 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
             </div>
 
             {!scanImage ? (
-              <label className="receipt-upload-area">
-                <FontAwesomeIcon icon={faCamera} className="receipt-camera-icon" />
-                <span className="receipt-upload-label">Take a photo or upload image</span>
+              <div className="receipt-upload-area">
+                <div className="receipt-upload-options">
+                  <label className="receipt-upload-option">
+                    <FontAwesomeIcon icon={faCamera} className="receipt-camera-icon" />
+                    <span className="receipt-upload-label">Take Photo</span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleImageSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  <label className="receipt-upload-option">
+                    <FontAwesomeIcon icon={faUpload} className="receipt-camera-icon" />
+                    <span className="receipt-upload-label">Upload Photo</span>
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
                 <span className="receipt-upload-hint">Supports JPG, PNG, WEBP</span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleImageSelect}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              </div>
             ) : (
               <div className="receipt-preview-wrap">
                 <img src={scanImage.dataUrl} className="receipt-preview-img" alt="Receipt preview" />
