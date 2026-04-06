@@ -1,0 +1,23 @@
+src/App.css
+  d37ed0dbacc2c6d1 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "88a3e9023763c4fd3c21d71440ffe1f917b62cea",
+  "prompts": {
+    "d37ed0dbacc2c6d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2cd8533-ad14-4e5a-9629-d82f17158404",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
