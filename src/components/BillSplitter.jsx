@@ -6,13 +6,13 @@ import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 const TIP_PRESETS = [15, 18, 20];
 
 const ZELLE_BANKS = [
-  { name: 'Zelle App',      href: 'https://apps.apple.com/app/zelle/id1260755201',                         color: '#6d1ed4', bg: '#f3e8ff' },
-  { name: 'Chase',          href: 'https://apps.apple.com/app/chase-mobile/id298867247',                   color: '#117ACA', bg: '#e8f4fd' },
-  { name: 'Wells Fargo',    href: 'https://apps.apple.com/app/wells-fargo-mobile/id274622988',             color: '#D71E28', bg: '#fef2f2' },
-  { name: 'Bank of America',href: 'https://apps.apple.com/app/bank-of-america-mobile-banking/id284847138', color: '#E31837', bg: '#fef2f2' },
-  { name: 'Citi',           href: 'https://apps.apple.com/app/citi-mobile/id301724680',                    color: '#056DAE', bg: '#e8f4fd' },
-  { name: 'US Bank',        href: 'https://apps.apple.com/app/us-bank-mobile/id314714285',                 color: '#1A4CA1', bg: '#e8f4fd' },
-  { name: 'Capital One',    href: 'https://apps.apple.com/app/capital-one-mobile/id407558537',             color: '#D03027', bg: '#fef2f2' },
+  { name: 'Zelle App',      href: 'zelle://app',               color: '#6d1ed4', bg: '#f3e8ff' },
+  { name: 'Chase',          href: 'chasemobile://app',         color: '#117ACA', bg: '#e8f4fd' },
+  { name: 'Wells Fargo',    href: 'wellsfargo://app',          color: '#D71E28', bg: '#fef2f2' },
+  { name: 'Bank of America',href: 'bofa://app',                color: '#E31837', bg: '#fef2f2' },
+  { name: 'Citi',           href: 'citibank://app',            color: '#056DAE', bg: '#e8f4fd' },
+  { name: 'US Bank',        href: 'usbank://app',              color: '#1A4CA1', bg: '#e8f4fd' },
+  { name: 'Capital One',    href: 'capitalone360://app',       color: '#D03027', bg: '#fef2f2' },
 ];
 
 // Extract bill ID from path: /split/:id
@@ -626,8 +626,6 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                   className="zelle-bank-btn"
                   style={{ color: bank.color, background: bank.bg, borderColor: bank.color + '44' }}
                   href={bank.href}
-                  target="_blank"
-                  rel="noreferrer"
                 >
                   {bank.name}
                 </a>
