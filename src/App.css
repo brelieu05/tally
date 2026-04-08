@@ -1141,12 +1141,77 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: #e8f4fd;
   color: #008cff;
   border: 1px solid #bfdffd;
+  cursor: pointer;
 }
 .split-pay-venmo:hover { background: #d0eaff; }
 .split-pay-zelle {
   background: #f3e8ff;
   color: #7c3aed;
   border: 1px solid #ddd6fe;
+  cursor: pointer;
+}
+.split-pay-zelle:hover { background: #ede9fe; }
+
+/* ── Zelle bank picker modal ─────────────────────── */
+.zelle-picker-sheet { max-width: 360px; }
+.zelle-picker-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 12px 0 6px;
+}
+.zelle-picker-recipient {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-alt, #f8f8f8);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.zelle-picker-value {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.zelle-copy-btn {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #ddd6fe;
+  background: #f3e8ff;
+  color: #7c3aed;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.zelle-copy-btn:hover { background: #ede9fe; }
+.zelle-bank-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.zelle-bank-btn {
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.15s;
+}
+.zelle-bank-btn:hover { opacity: 0.8; }
+.zelle-picker-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .split-person-payer { background: #f0fdf4; }
