@@ -5,15 +5,6 @@ import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 
 const TIP_PRESETS = [15, 18, 20];
 
-const ZELLE_BANKS = [
-  { name: 'Zelle App',      href: 'zelle://app',               color: '#6d1ed4', bg: '#f3e8ff' },
-  { name: 'Chase',          href: 'chasemobile://app',         color: '#117ACA', bg: '#e8f4fd' },
-  { name: 'Wells Fargo',    href: 'wellsfargo://app',          color: '#D71E28', bg: '#fef2f2' },
-  { name: 'Bank of America',href: 'bofa://app',                color: '#E31837', bg: '#fef2f2' },
-  { name: 'Citi',           href: 'citibank://app',            color: '#056DAE', bg: '#e8f4fd' },
-  { name: 'US Bank',        href: 'usbank://app',              color: '#1A4CA1', bg: '#e8f4fd' },
-  { name: 'Capital One',    href: 'capitalone360://app',       color: '#D03027', bg: '#fef2f2' },
-];
 
 // Extract bill ID from path: /split/:id
 function getBillId() {
@@ -58,6 +49,12 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
 
   const [zellePickerOpen, setZellePickerOpen] = useState(false);
   const [zelleCopied, setZelleCopied]         = useState(false);
+
+  function openZellePicker() {
+    setZellePickerOpen(true);
+    setZelleCopied(false);
+    navigator.clipboard.writeText(zelle).then(() => setZelleCopied(true)).catch(() => {});
+  }
 
   const [shareId, setShareId]       = useState(getBillId); // reuse if already shared
   const [splitExpenseId, setSplitExpenseId] = useState(null); // expense created from this split
@@ -604,35 +601,27 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
         <div className="modal-overlay" onClick={() => setZellePickerOpen(false)}>
           <div className="modal-sheet zelle-picker-sheet" onClick={e => e.stopPropagation()}>
             <span className="modal-title">Pay via Zelle</span>
-            <p className="zelle-picker-subtitle">Send to:</p>
             <div className="zelle-picker-recipient">
-              <span className="zelle-picker-value">{zelle}</span>
+              <div className="zelle-picker-recipient-info">
+                <span className="zelle-picker-label">Send to</span>
+                <span className="zelle-picker-value">{zelle}</span>
+              </div>
               <button
-                className="zelle-copy-btn"
+                className={`zelle-copy-btn ${zelleCopied ? 'zelle-copy-btn--done' : ''}`}
                 onClick={() => {
-                  navigator.clipboard.writeText(zelle);
-                  setZelleCopied(true);
-                  setTimeout(() => setZelleCopied(false), 2000);
+                  navigator.clipboard.writeText(zelle).then(() => {
+                    setZelleCopied(true);
+                    setTimeout(() => setZelleCopied(false), 2500);
+                  });
                 }}
               >
-                {zelleCopied ? '✓ Copied' : 'Copy'}
+                {zelleCopied ? '✓ Copied!' : 'Copy'}
               </button>
             </div>
-            <p className="zelle-picker-subtitle" style={{ marginTop: 16 }}>Open your bank app:</p>
-            <div className="zelle-bank-grid">
-              {ZELLE_BANKS.map(bank => (
-                <a
-                  key={bank.name}
-                  className="zelle-bank-btn"
-                  style={{ color: bank.color, background: bank.bg, borderColor: bank.color + '44' }}
-                  href={bank.href}
-                >
-                  {bank.name}
-                </a>
-              ))}
-            </div>
-            <p className="zelle-picker-note">Prefill isn't supported by most bank apps — copy the info above and paste it after opening.</p>
-            <button className="btn-secondary" style={{ marginTop: 12, width: '100%' }} onClick={() => setZellePickerOpen(false)}>Close</button>
+            <p className="zelle-picker-note">
+              {zelleCopied ? 'Now open your banking app → Zelle → paste to send.' : 'Copy the info above, then open your banking app and navigate to Zelle.'}
+            </p>
+            <button className="btn-secondary" style={{ marginTop: 4, width: '100%' }} onClick={() => setZellePickerOpen(false)}>Done</button>
           </div>
         </div>
       )}
@@ -1042,7 +1031,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                       {zelle && (
                         <button
                           className="split-pay-btn split-pay-zelle"
-                          onClick={() => setZellePickerOpen(true)}
+                          onClick={openZellePicker}
                         >
                           Zelle {zelle}
                         </button>
