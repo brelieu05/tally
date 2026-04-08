@@ -6,13 +6,13 @@ import { faTrashCan } from '@fortawesome/free-regular-svg-icons';
 const TIP_PRESETS = [15, 18, 20];
 
 const ZELLE_BANKS = [
-  { name: 'Zelle App',      scheme: 'zelle://',            color: '#6d1ed4', bg: '#f3e8ff' },
-  { name: 'Chase',          scheme: 'chasemobile://',      color: '#117ACA', bg: '#e8f4fd' },
-  { name: 'Wells Fargo',    scheme: 'wellsfargo://',       color: '#D71E28', bg: '#fef2f2' },
-  { name: 'Bank of America',scheme: 'bofa://',             color: '#E31837', bg: '#fef2f2' },
-  { name: 'Citi',           scheme: 'citibank://',         color: '#056DAE', bg: '#e8f4fd' },
-  { name: 'US Bank',        scheme: 'usbank://',           color: '#1A4CA1', bg: '#e8f4fd' },
-  { name: 'Capital One',    scheme: 'capitalone360://',    color: '#D03027', bg: '#fef2f2' },
+  { name: 'Zelle App',      href: 'https://apps.apple.com/app/zelle/id1260755201',                         color: '#6d1ed4', bg: '#f3e8ff' },
+  { name: 'Chase',          href: 'https://apps.apple.com/app/chase-mobile/id298867247',                   color: '#117ACA', bg: '#e8f4fd' },
+  { name: 'Wells Fargo',    href: 'https://apps.apple.com/app/wells-fargo-mobile/id274622988',             color: '#D71E28', bg: '#fef2f2' },
+  { name: 'Bank of America',href: 'https://apps.apple.com/app/bank-of-america-mobile-banking/id284847138', color: '#E31837', bg: '#fef2f2' },
+  { name: 'Citi',           href: 'https://apps.apple.com/app/citi-mobile/id301724680',                    color: '#056DAE', bg: '#e8f4fd' },
+  { name: 'US Bank',        href: 'https://apps.apple.com/app/us-bank-mobile/id314714285',                 color: '#1A4CA1', bg: '#e8f4fd' },
+  { name: 'Capital One',    href: 'https://apps.apple.com/app/capital-one-mobile/id407558537',             color: '#D03027', bg: '#fef2f2' },
 ];
 
 // Extract bill ID from path: /split/:id
@@ -621,14 +621,16 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
             <p className="zelle-picker-subtitle" style={{ marginTop: 16 }}>Open your bank app:</p>
             <div className="zelle-bank-grid">
               {ZELLE_BANKS.map(bank => (
-                <button
+                <a
                   key={bank.name}
                   className="zelle-bank-btn"
                   style={{ color: bank.color, background: bank.bg, borderColor: bank.color + '44' }}
-                  onClick={() => { window.location.href = bank.scheme; }}
+                  href={bank.href}
+                  target="_blank"
+                  rel="noreferrer"
                 >
                   {bank.name}
-                </button>
+                </a>
               ))}
             </div>
             <p className="zelle-picker-note">Prefill isn't supported by most bank apps — copy the info above and paste it after opening.</p>
@@ -1034,8 +1036,7 @@ export default function BillSplitter({ embedded = false, onDirtyChange, categori
                       {venmo && (
                         <a
                           className="split-pay-btn split-pay-venmo"
-                          href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(venmo.replace(/^@/, ''))}&note=${encodeURIComponent(billName || 'Split bill')}`}
-                          onClick={e => { e.preventDefault(); window.location.href = e.currentTarget.href; }}
+                          href={`venmo://paycharge?txn=pay&recipients=${venmo.replace(/^@/, '')}&note=${encodeURIComponent(billName || 'Split bill')}`}
                         >
                           Venmo {venmo.startsWith('@') ? venmo : `@${venmo}`}
                         </a>
