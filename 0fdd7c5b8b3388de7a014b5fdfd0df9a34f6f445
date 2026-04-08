@@ -1,0 +1,23 @@
+src/components/BillSplitter.jsx
+  66b1603fa18f4580 9-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "0fdd7c5b8b3388de7a014b5fdfd0df9a34f6f445",
+  "prompts": {
+    "66b1603fa18f4580": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38c8223b-29e9-48aa-95b7-5c83ee2c6dc4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 9,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}
