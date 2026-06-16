@@ -82,7 +82,7 @@ export default function WeeklyBreakdown({ categories, token, balance, expenses, 
 
   const totalByDay = {};
   if (data?.byDay) {
-    data.byDay.forEach(r => { totalByDay[r.date] = (totalByDay[r.date] || 0) + r.total; });
+    data.byDay.forEach(r => { totalByDay[r.date] = (totalByDay[r.date] || 0) + Number(r.total); });
   }
 
   const dayTotals = weekDays.map(d => ({ ...d, total: totalByDay[d.date] || 0 }));
@@ -143,7 +143,7 @@ export default function WeeklyBreakdown({ categories, token, balance, expenses, 
                 >
                   <div className="day-bar-track">
                     {activeDay === day.date && (
-                      <div className="day-bar-tooltip">${day.total.toFixed(2)}</div>
+                      <div className="day-bar-tooltip">${Number(day.total).toFixed(2)}</div>
                     )}
                     <div
                       className={`day-bar-fill ${day.isToday ? 'today' : ''} ${day.total === 0 ? 'empty' : ''}`}
