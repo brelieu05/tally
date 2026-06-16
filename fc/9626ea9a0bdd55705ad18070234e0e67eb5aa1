@@ -1,0 +1,20 @@
+src/components/WeeklyBreakdown.jsx
+  s_93c083a781018e::t_43044f43ec38a3 85
+  s_93c083a781018e::t_6d9d4ab5e9cfae 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "fc9626ea9a0bdd55705ad18070234e0e67eb5aa1",
+  "prompts": {},
+  "sessions": {
+    "s_93c083a781018e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d4e8767-3f6f-4ca0-8647-64026d803841",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu <brendanlieu05@gmail.com>"
+    }
+  }
+}
