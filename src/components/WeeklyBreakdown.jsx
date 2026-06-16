@@ -33,6 +33,7 @@ export default function WeeklyBreakdown({ categories, token, balance, expenses, 
   const [monday, setMonday] = useState(() => getMondayOfWeek(new Date()));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeDay, setActiveDay] = useState(null);
 
   useEffect(() => { if (accountId) fetchData(); }, [monday, accountId]);
 
@@ -48,8 +49,12 @@ export default function WeeklyBreakdown({ categories, token, balance, expenses, 
     }
   }
 
-  function prevWeek() { setMonday(prev => addDays(prev, -7)); }
-  function nextWeek() { setMonday(prev => addDays(prev, 7)); }
+  function prevWeek() { setMonday(prev => addDays(prev, -7)); setActiveDay(null); }
+  function nextWeek() { setMonday(prev => addDays(prev, 7)); setActiveDay(null); }
+
+  function toggleDayTooltip(date) {
+    setActiveDay(prev => (prev === date ? null : date));
+  }
 
   const isCurrentWeek = toDateStr(monday) === toDateStr(getMondayOfWeek(new Date()));
   const todayStr = toDateStr(new Date());
@@ -129,8 +134,17 @@ export default function WeeklyBreakdown({ categories, token, balance, expenses, 
             <div className="bar-section-title">Daily Spending</div>
             <div className="day-bars">
               {dayTotals.map(day => (
-                <div key={day.date} className="day-bar-col">
+                <div
+                  key={day.date}
+                  className="day-bar-col"
+                  onMouseEnter={() => setActiveDay(day.date)}
+                  onMouseLeave={() => setActiveDay(prev => (prev === day.date ? null : prev))}
+                  onClick={() => toggleDayTooltip(day.date)}
+                >
                   <div className="day-bar-track">
+                    {activeDay === day.date && (
+                      <div className="day-bar-tooltip">${day.total.toFixed(2)}</div>
+                    )}
                     <div
                       className={`day-bar-fill ${day.isToday ? 'today' : ''} ${day.total === 0 ? 'empty' : ''}`}
                       style={{ height: day.total === 0 ? undefined : `${(day.total / maxDay) * 100}%` }}
