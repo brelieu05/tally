@@ -1328,6 +1328,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
 }
 
+/* ── Budget ─────────────────────────────────────────── */
+.budget-period-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
 /* ── Responsive ─────────────────────────────────────── */
 @media (max-width: 430px) {
   .app-main { padding: 12px 12px 90px; }

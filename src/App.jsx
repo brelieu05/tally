@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faCalendarDays, faArrowRightFromBracket, faScissors, faChevronDown, faCheck, faTrashCan, faGraduationCap } from '@fortawesome/free-solid-svg-icons';
+import { faHouse, faCalendarDays, faArrowRightFromBracket, faScissors, faChevronDown, faCheck, faTrashCan, faGraduationCap, faWallet } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar, faChartBar } from '@fortawesome/free-regular-svg-icons';
 import Login from './components/Login';
 import AddExpense from './components/AddExpense';
@@ -10,6 +10,7 @@ import MonthlyBreakdown from './components/MonthlyBreakdown';
 import BillSplitter from './components/BillSplitter';
 import SplitHistory from './components/SplitHistory';
 import DebtTracker from './components/DebtTracker';
+import Budget from './components/Budget';
 
 function authHeaders(token) {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -207,11 +208,12 @@ export default function App() {
     { id: 'home',    label: 'Home',    icon: faHouse,          activeIcon: faHouse },
     { id: 'weekly',  label: 'Weekly',  icon: faCalendar,       activeIcon: faCalendarDays },
     { id: 'monthly', label: 'Monthly', icon: faChartBar,       activeIcon: faChartBar },
+    { id: 'budget',  label: 'Budget',  icon: faWallet,         activeIcon: faWallet },
     { id: 'debt',    label: 'Debt',    icon: faGraduationCap,  activeIcon: faGraduationCap },
     { id: 'split',   label: 'Split',   icon: faScissors,       activeIcon: faScissors },
   ];
 
-  const titles = { home: 'tally', weekly: 'weekly', monthly: 'monthly', debt: 'debt', split: 'split' };
+  const titles = { home: 'tally', weekly: 'weekly', monthly: 'monthly', budget: 'budget', debt: 'debt', split: 'split' };
   const currentAccount = accounts.find(a => a.id === currentAccountId);
 
   return (
@@ -269,6 +271,7 @@ export default function App() {
         )}
         {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} balance={balance} expenses={expenses} accountId={currentAccountId} />}
         {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} balance={balance} expenses={expenses} accountId={currentAccountId} />}
+        {tab === 'budget'  && <Budget categories={categories} token={token} accountId={currentAccountId} />}
         {tab === 'debt'    && <DebtTracker token={token} />}
         {tab === 'split' && (
           <>

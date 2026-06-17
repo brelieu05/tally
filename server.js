@@ -25,6 +25,8 @@ const mem = {
   accounts:   [{ id: 1, name: 'Main' }],
   loans:         [],
   nextLoanId:    1,
+  budgets:       [],
+  nextBudgetId:  1,
   categories: [
     { id: 1, name: 'Food',          color: '#F97316' },
     { id: 2, name: 'Transport',     color: '#3B82F6' },
@@ -92,6 +94,14 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS split_bills (
       id         TEXT PRIMARY KEY,
       data       JSONB NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS budgets (
+      id         SERIAL PRIMARY KEY,
+      account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
+      category   TEXT NOT NULL DEFAULT '',
+      period     TEXT NOT NULL DEFAULT 'daily',
+      amount     NUMERIC(10,2) NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
@@ -546,6 +556,62 @@ app.get('/api/expenses/monthly', requireAuth, async (req, res) => {
     ),
   ]);
   res.json({ byCategory: byCategory.rows, byWeek: byWeek.rows, total: total.rows[0].total });
+});
+
+// ── Budgets ────────────────────────────────────────────────────
+app.get('/api/budgets', requireAuth, async (req, res) => {
+  const account_id = parseInt(req.query.account_id);
+  if (!account_id) return res.status(400).json({ error: 'account_id required' });
+  if (isLocal) {
+    return res.json(mem.budgets.filter(b => b.account_id === account_id));
+  }
+  const { rows } = await pool.query(
+    'SELECT * FROM budgets WHERE account_id = $1 ORDER BY created_at',
+    [account_id]
+  );
+  res.json(rows);
+});
+
+app.post('/api/budgets', requireAuth, async (req, res) => {
+  const { account_id, category = '', period = 'daily', amount } = req.body;
+  if (!account_id || !amount) return res.status(400).json({ error: 'account_id and amount required' });
+  if (isLocal) {
+    const budget = { id: mem.nextBudgetId++, account_id: parseInt(account_id), category, period, amount: parseFloat(amount) };
+    mem.budgets.push(budget);
+    return res.json(budget);
+  }
+  const { rows } = await pool.query(
+    'INSERT INTO budgets (account_id, category, period, amount) VALUES ($1, $2, $3, $4) RETURNING *',
+    [parseInt(account_id), category, period, parseFloat(amount)]
+  );
+  res.json(rows[0]);
+});
+
+app.put('/api/budgets/:id', requireAuth, async (req, res) => {
+  const { category = '', period, amount } = req.body;
+  const id = parseInt(req.params.id);
+  if (isLocal) {
+    const idx = mem.budgets.findIndex(b => b.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+    mem.budgets[idx] = { ...mem.budgets[idx], category, period, amount: parseFloat(amount) };
+    return res.json(mem.budgets[idx]);
+  }
+  const { rows } = await pool.query(
+    'UPDATE budgets SET category=$1, period=$2, amount=$3 WHERE id=$4 RETURNING *',
+    [category, period, parseFloat(amount), id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  res.json(rows[0]);
+});
+
+app.delete('/api/budgets/:id', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isLocal) {
+    mem.budgets = mem.budgets.filter(b => b.id !== id);
+    return res.json({ success: true });
+  }
+  await pool.query('DELETE FROM budgets WHERE id = $1', [id]);
+  res.json({ success: true });
 });
 
 // ── Serve frontend ─────────────────────────────────────────────
