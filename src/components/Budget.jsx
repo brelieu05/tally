@@ -87,6 +87,8 @@ export default function Budget({ token, categories, accountId }) {
         });
         const newBudget = await res.json();
         setBudgets(prev => [...prev, newBudget]);
+        const eRes = await fetch(`/api/expenses?account_id=${accountId}&start=${monday}&end=${sunday}`, { headers });
+        if (eRes.ok) setPeriodExpenses(await eRes.json());
       }
       setShowModal(false);
     } finally {
