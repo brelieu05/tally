@@ -1329,6 +1329,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ── Budget ─────────────────────────────────────────── */
+.budget-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--border);
+  font-size: 14px;
+  cursor: grab;
+  border-radius: 4px;
+  transition: color 0.12s;
+  touch-action: none;
+}
+.budget-drag-handle:hover { color: var(--text-muted); }
+.budget-drag-handle:active { cursor: grabbing; }
+
 .budget-period-badge {
   font-size: 10px;
   font-weight: 700;
