@@ -1,0 +1,21 @@
+src/components/Budget.jsx
+  s_7b7f95372f2e4e::t_3b586cda19352a 5-11,20-22,30,44-47,51,54-59,100
+src/App.jsx
+  s_7b7f95372f2e4e::t_a0f64af16dd2b6 274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f86aedc0fbed4afb143e01c764489e11ab275fa9",
+  "prompts": {},
+  "sessions": {
+    "s_7b7f95372f2e4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85d2a684-d3b8-450f-94ef-21ecc3a871b8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu <brendanlieu05@gmail.com>"
+    }
+  }
+}
