@@ -271,7 +271,7 @@ export default function App() {
         )}
         {tab === 'weekly'  && <WeeklyBreakdown  categories={categories} token={token} balance={balance} expenses={expenses} accountId={currentAccountId} />}
         {tab === 'monthly' && <MonthlyBreakdown categories={categories} token={token} balance={balance} expenses={expenses} accountId={currentAccountId} />}
-        {tab === 'budget'  && <Budget categories={categories} token={token} accountId={currentAccountId} />}
+        {tab === 'budget'  && <Budget categories={categories} token={token} accountId={currentAccountId} expenses={expenses} />}
         {tab === 'debt'    && <DebtTracker token={token} />}
         {tab === 'split' && (
           <>

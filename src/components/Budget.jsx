@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faTrashCan, faPencil } from '@fortawesome/free-solid-svg-icons';
 
+function localDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function getWeekBounds() {
   const now = new Date();
   const dayOfWeek = (now.getDay() + 6) % 7; // Monday = 0
@@ -10,9 +17,9 @@ function getWeekBounds() {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   return {
-    today: now.toISOString().slice(0, 10),
-    monday: monday.toISOString().slice(0, 10),
-    sunday: sunday.toISOString().slice(0, 10),
+    today: localDateStr(now),
+    monday: localDateStr(monday),
+    sunday: localDateStr(sunday),
   };
 }
 
@@ -20,9 +27,8 @@ function fmt(n) {
   return n.toFixed(2);
 }
 
-export default function Budget({ token, categories, accountId }) {
+export default function Budget({ token, categories, accountId, expenses }) {
   const [budgets, setBudgets] = useState([]);
-  const [periodExpenses, setPeriodExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
@@ -35,17 +41,22 @@ export default function Budget({ token, categories, accountId }) {
   useEffect(() => {
     if (!accountId) return;
     setLoading(true);
-    Promise.all([
-      fetch(`/api/budgets?account_id=${accountId}`, { headers }).then(r => r.json()).then(setBudgets),
-      fetch(`/api/expenses?account_id=${accountId}&start=${monday}&end=${sunday}`, { headers }).then(r => r.json()).then(setPeriodExpenses),
-    ]).finally(() => setLoading(false));
+    fetch(`/api/budgets?account_id=${accountId}`, { headers })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setBudgets(data); })
+      .finally(() => setLoading(false));
   }, [accountId]);
 
   function getSpent(budget) {
-    return periodExpenses
+    return (expenses || [])
       .filter(e => {
         if (e.type === 'income') return false;
-        if (budget.period === 'daily' && e.date !== today) return false;
+        const d = (e.date || '').slice(0, 10); // normalize ISO timestamps
+        if (budget.period === 'daily') {
+          if (d !== today) return false;
+        } else {
+          if (d < monday || d > sunday) return false;
+        }
         if (budget.category && e.category !== budget.category) return false;
         return true;
       })
@@ -86,9 +97,7 @@ export default function Budget({ token, categories, accountId }) {
           body: JSON.stringify({ account_id: accountId, category: form.category, period: form.period, amount: amt }),
         });
         const newBudget = await res.json();
-        setBudgets(prev => [...prev, newBudget]);
-        const eRes = await fetch(`/api/expenses?account_id=${accountId}&start=${monday}&end=${sunday}`, { headers });
-        if (eRes.ok) setPeriodExpenses(await eRes.json());
+        if (!newBudget.error) setBudgets(prev => [...prev, newBudget]);
       }
       setShowModal(false);
     } finally {
