@@ -18,7 +18,6 @@ function localDateStr(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-// Parse a YYYY-MM-DD string as local time (avoids UTC-shift issues)
 function parseLocal(str) {
   const [y, m, d] = str.split('-').map(Number);
   return new Date(y, m - 1, d, 12);
@@ -26,7 +25,7 @@ function parseLocal(str) {
 
 function getBoundsFor(dateStr) {
   const d = parseLocal(dateStr);
-  const dayOfWeek = (d.getDay() + 6) % 7; // Monday = 0
+  const dayOfWeek = (d.getDay() + 6) % 7;
   const monday = new Date(d);
   monday.setDate(d.getDate() - dayOfWeek);
   const sunday = new Date(monday);
@@ -38,18 +37,20 @@ function getBoundsFor(dateStr) {
     sunday:     localDateStr(sunday),
     monthStart: localDateStr(monthStart),
     monthEnd:   localDateStr(monthEnd),
+    year:       d.getFullYear(),
+    month:      d.getMonth() + 1,
   };
 }
 
-function fmt(n) { return n.toFixed(2); }
+function fmt(n) { return Number(n).toFixed(2); }
 
 function SortableBudgetCard({ budget, spent, periodLabel, onEdit, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: budget.id });
 
-  const limit    = parseFloat(budget.amount);
-  const rawPct   = (spent / limit) * 100;
-  const pct      = Math.min(rawPct, 100);
-  const over     = spent > limit;
+  const limit       = parseFloat(budget.amount);
+  const rawPct      = (spent / limit) * 100;
+  const pct         = Math.min(rawPct, 100);
+  const over        = spent > limit;
   const statusColor = over ? 'var(--red)' : rawPct >= 80 ? '#F59E0B' : 'var(--green)';
 
   return (
@@ -106,24 +107,26 @@ function SortableBudgetCard({ budget, spent, periodLabel, onEdit, onDelete }) {
 export default function Budget({ token, categories, accountId, expenses }) {
   const today = localDateStr();
 
-  const [budgets,      setBudgets]      = useState([]);
-  const [loading,      setLoading]      = useState(true);
+  const [budgets,     setBudgets]     = useState([]);
+  const [budgetLoading, setBudgetLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [histExpenses, setHistExpenses] = useState(null);
-  const [histLoading,  setHistLoading]  = useState(false);
-  const [showModal,    setShowModal]    = useState(false);
-  const [editBudget,   setEditBudget]   = useState(null);
-  const [form,         setForm]         = useState({ category: '', period: 'daily', amount: '' });
-  const [saving,       setSaving]       = useState(false);
+  const [weekData,    setWeekData]    = useState(null);
+  const [monthData,   setMonthData]   = useState(null);
+  const [dayExpenses, setDayExpenses] = useState(null);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [showModal,   setShowModal]   = useState(false);
+  const [editBudget,  setEditBudget]  = useState(null);
+  const [form,        setForm]        = useState({ category: '', period: 'daily', amount: '' });
+  const [saving,      setSaving]      = useState(false);
 
-  const headers  = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const isToday  = selectedDate === today;
-  const { monday, sunday, monthStart, monthEnd } = getBoundsFor(selectedDate);
+  const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const isToday = selectedDate === today;
+  const { monday, sunday, monthStart, monthEnd, year, month } = getBoundsFor(selectedDate);
 
-  // Fetch budgets on mount
+  // Load budgets once on mount
   useEffect(() => {
     if (!accountId) return;
-    setLoading(true);
+    setBudgetLoading(true);
     fetch(`/api/budgets?account_id=${accountId}`, { headers })
       .then(r => r.json())
       .then(data => {
@@ -135,36 +138,61 @@ export default function Budget({ token, categories, accountId, expenses }) {
         }
         setBudgets(data);
       })
-      .finally(() => setLoading(false));
+      .finally(() => setBudgetLoading(false));
   }, [accountId]);
 
-  // Fetch historical expenses when selectedDate isn't today
+  // Load period data whenever selectedDate or accountId changes.
+  // Weekly and monthly budgets use the same server-side aggregation as
+  // WeeklyBreakdown / MonthlyBreakdown so the numbers always match.
+  // Daily budgets use the expenses prop for today, or raw day expenses for historical.
   useEffect(() => {
-    if (isToday || !accountId) { setHistExpenses(null); return; }
-    // Fetch wide enough to cover weekly budgets crossing month boundaries
-    const fetchStart = monday   < monthStart ? monday   : monthStart;
-    const fetchEnd   = sunday   > monthEnd   ? sunday   : monthEnd;
-    setHistLoading(true);
-    fetch(`/api/expenses?account_id=${accountId}&start=${fetchStart}&end=${fetchEnd}`, { headers })
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setHistExpenses(data); })
-      .finally(() => setHistLoading(false));
+    if (!accountId) return;
+    setDataLoading(true);
+
+    const fetches = [
+      fetch(`/api/expenses/weekly?week_start=${monday}&account_id=${accountId}`, { headers })
+        .then(r => r.json()).then(d => { if (d && !d.error) setWeekData(d); }),
+      fetch(`/api/expenses/monthly?year=${year}&month=${month}&account_id=${accountId}`, { headers })
+        .then(r => r.json()).then(d => { if (d && !d.error) setMonthData(d); }),
+    ];
+
+    if (!isToday) {
+      fetches.push(
+        fetch(`/api/expenses?account_id=${accountId}&start=${selectedDate}&end=${selectedDate}`, { headers })
+          .then(r => r.json())
+          .then(d => setDayExpenses(Array.isArray(d) ? d : []))
+      );
+    } else {
+      setDayExpenses(null);
+    }
+
+    Promise.all(fetches).finally(() => setDataLoading(false));
   }, [selectedDate, accountId]);
 
-  const activeExpenses = isToday ? (expenses || []) : (histExpenses || []);
-
   function getSpent(budget) {
-    return activeExpenses
-      .filter(e => {
-        if (e.type === 'income') return false;
-        const d = (e.date || '').slice(0, 10);
-        if (budget.period === 'daily')        { if (d !== selectedDate)            return false; }
-        else if (budget.period === 'weekly')  { if (d < monday || d > sunday)      return false; }
-        else                                  { if (d < monthStart || d > monthEnd) return false; }
-        if (budget.category && e.category !== budget.category) return false;
-        return true;
-      })
-      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    if (budget.period === 'daily') {
+      const src = isToday ? (expenses || []) : (dayExpenses || []);
+      return src
+        .filter(e =>
+          e.type !== 'income' &&
+          (e.date || '').slice(0, 10) === selectedDate &&
+          (!budget.category || e.category === budget.category)
+        )
+        .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    }
+
+    if (budget.period === 'weekly') {
+      if (!weekData) return 0;
+      if (!budget.category) return Number(weekData.total || 0);
+      const cat = (weekData.byCategory || []).find(c => c.category === budget.category);
+      return cat ? Number(cat.total) : 0;
+    }
+
+    // monthly
+    if (!monthData) return 0;
+    if (!budget.category) return Number(monthData.total || 0);
+    const cat = (monthData.byCategory || []).find(c => c.category === budget.category);
+    return cat ? Number(cat.total) : 0;
   }
 
   function getPeriodLabel(period) {
@@ -176,9 +204,8 @@ export default function Budget({ token, categories, accountId, expenses }) {
     if (period === 'weekly') {
       const mo = parseLocal(monday);
       const su = parseLocal(sunday);
-      const sameYear = mo.getFullYear() === new Date().getFullYear();
-      const fmt = d => d.toLocaleDateString('default', { month: 'short', day: 'numeric' });
-      return `${fmt(mo)} – ${fmt(su)}${sameYear ? '' : `, ${mo.getFullYear()}`}`;
+      const f  = d => d.toLocaleDateString('default', { month: 'short', day: 'numeric' });
+      return `${f(mo)} – ${f(su)}`;
     }
     return parseLocal(monthStart).toLocaleString('default', { month: 'long', year: 'numeric' });
   }
@@ -203,8 +230,8 @@ export default function Budget({ token, categories, accountId, expenses }) {
   }
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(PointerSensor,  { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor,    { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -262,7 +289,7 @@ export default function Budget({ token, categories, accountId, expenses }) {
     setBudgets(prev => { const next = prev.filter(b => b.id !== id); saveOrder(next); return next; });
   }
 
-  if (loading) return <div className="spinner" />;
+  if (budgetLoading) return <div className="spinner" />;
 
   const selDateDisplay = isToday
     ? 'Today'
@@ -304,7 +331,7 @@ export default function Budget({ token, categories, accountId, expenses }) {
             </span>
           </div>
         </div>
-      ) : histLoading ? (
+      ) : dataLoading ? (
         <div className="spinner" />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
