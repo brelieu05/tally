@@ -10,6 +10,7 @@ import {
   verticalListSortingStrategy, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { enqueue, cancelByTempId, makeTempId, isTempId } from '../offlineQueue';
 
 function localDateStr(d = new Date()) {
   const y = d.getFullYear();
@@ -262,20 +263,38 @@ export default function Budget({ token, categories, accountId, expenses }) {
     setSaving(true);
     try {
       if (editBudget) {
-        const res = await fetch(`/api/budgets/${editBudget.id}`, {
-          method: 'PUT', headers,
-          body: JSON.stringify({ category: form.category, period: form.period, amount: amt }),
-        });
-        const updated = await res.json();
-        setBudgets(prev => prev.map(b => b.id === editBudget.id ? updated : b));
+        const patch = { category: form.category, period: form.period, amount: amt };
+        if (isTempId(editBudget.id)) {
+          // Still offline — update the queued add payload and local state
+          enqueue({ type: 'edit_budget', payload: { id: editBudget.id, ...patch } });
+          setBudgets(prev => prev.map(b => b.id === editBudget.id ? { ...b, ...patch } : b));
+        } else if (!navigator.onLine) {
+          enqueue({ type: 'edit_budget', payload: { id: editBudget.id, ...patch } });
+          setBudgets(prev => prev.map(b => b.id === editBudget.id ? { ...b, ...patch } : b));
+        } else {
+          const res = await fetch(`/api/budgets/${editBudget.id}`, {
+            method: 'PUT', headers,
+            body: JSON.stringify(patch),
+          });
+          const updated = await res.json();
+          setBudgets(prev => prev.map(b => b.id === editBudget.id ? updated : b));
+        }
       } else {
-        const res = await fetch('/api/budgets', {
-          method: 'POST', headers,
-          body: JSON.stringify({ account_id: accountId, category: form.category, period: form.period, amount: amt }),
-        });
-        const newBudget = await res.json();
-        if (!newBudget.error) {
-          setBudgets(prev => { const next = [...prev, newBudget]; saveOrder(next); return next; });
+        const payload = { account_id: accountId, category: form.category, period: form.period, amount: amt };
+        if (!navigator.onLine) {
+          const tempId = makeTempId();
+          const tempBudget = { id: tempId, ...payload };
+          enqueue({ type: 'add_budget', tempId, payload });
+          setBudgets(prev => { const next = [...prev, tempBudget]; saveOrder(next); return next; });
+        } else {
+          const res = await fetch('/api/budgets', {
+            method: 'POST', headers,
+            body: JSON.stringify(payload),
+          });
+          const newBudget = await res.json();
+          if (!newBudget.error) {
+            setBudgets(prev => { const next = [...prev, newBudget]; saveOrder(next); return next; });
+          }
         }
       }
       setShowModal(false);
@@ -285,8 +304,16 @@ export default function Budget({ token, categories, accountId, expenses }) {
   }
 
   async function handleDelete(id) {
-    await fetch(`/api/budgets/${id}`, { method: 'DELETE', headers });
     setBudgets(prev => { const next = prev.filter(b => b.id !== id); saveOrder(next); return next; });
+    if (isTempId(id)) {
+      cancelByTempId(id);
+      return;
+    }
+    if (!navigator.onLine) {
+      enqueue({ type: 'delete_budget', payload: { id } });
+      return;
+    }
+    await fetch(`/api/budgets/${id}`, { method: 'DELETE', headers });
   }
 
   if (budgetLoading) return <div className="spinner" />;

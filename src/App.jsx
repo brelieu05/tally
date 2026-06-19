@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getQueue, enqueue, dequeue, cancelByTempId, updateQueuedPayload, makeTempId, isTempId } from './offlineQueue';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHouse, faCalendarDays, faArrowRightFromBracket, faScissors, faChevronDown, faCheck, faTrashCan, faGraduationCap, faWallet } from '@fortawesome/free-solid-svg-icons';
 import { faCalendar, faChartBar } from '@fortawesome/free-regular-svg-icons';
@@ -41,6 +42,91 @@ export default function App() {
   const [pendingSplitView, setPendingSplitView] = useState(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
+  const [isOnline, setIsOnline]     = useState(navigator.onLine);
+  const [pendingOps, setPendingOps] = useState(() => getQueue());
+  const [syncing, setSyncing]       = useState(false);
+  const [syncDone, setSyncDone]     = useState(false);
+  const syncingRef = useRef(false);
+  const syncRef    = useRef(null);
+
+  const syncAll = useCallback(async () => {
+    const queue = getQueue();
+    if (!queue.length || syncingRef.current) return;
+    syncingRef.current = true;
+    setSyncing(true);
+    setSyncDone(false);
+    const idMap = {};
+    for (const op of queue) {
+      try {
+        const hdrs = authHeaders(token);
+        if (op.type === 'add_expense') {
+          const res = await fetch('/api/expenses', { method: 'POST', headers: hdrs, body: JSON.stringify(op.payload) });
+          if (!res.ok) break;
+          const real = await res.json();
+          idMap[op.tempId] = real.id;
+          setExpenses(prev => {
+            const i = prev.findIndex(e => e.id === op.tempId);
+            return i === -1 ? [real, ...prev] : prev.map(e => e.id === op.tempId ? real : e);
+          });
+          dequeue(op.id);
+        } else if (op.type === 'edit_expense') {
+          const realId = idMap[op.payload.id] || op.payload.id;
+          if (isTempId(realId)) { dequeue(op.id); continue; }
+          const res = await fetch(`/api/expenses/${realId}`, { method: 'PUT', headers: hdrs, body: JSON.stringify(op.payload) });
+          if (!res.ok) break;
+          const updated = await res.json();
+          setExpenses(prev => prev.map(e => e.id === updated.id ? updated : e));
+          dequeue(op.id);
+        } else if (op.type === 'delete_expense') {
+          const realId = idMap[op.payload.id] || op.payload.id;
+          if (!isTempId(realId)) {
+            const res = await fetch(`/api/expenses/${realId}`, { method: 'DELETE', headers: hdrs });
+            if (!res.ok && res.status !== 404) break;
+          }
+          dequeue(op.id);
+        } else if (op.type === 'add_budget') {
+          const res = await fetch('/api/budgets', { method: 'POST', headers: hdrs, body: JSON.stringify(op.payload) });
+          if (!res.ok) break;
+          dequeue(op.id);
+        } else if (op.type === 'edit_budget') {
+          const res = await fetch(`/api/budgets/${op.payload.id}`, { method: 'PUT', headers: hdrs, body: JSON.stringify(op.payload) });
+          if (!res.ok) break;
+          dequeue(op.id);
+        } else if (op.type === 'delete_budget') {
+          if (!isTempId(op.payload.id)) {
+            await fetch(`/api/budgets/${op.payload.id}`, { method: 'DELETE', headers: hdrs });
+          }
+          dequeue(op.id);
+        }
+        setPendingOps(getQueue());
+      } catch {
+        break;
+      }
+    }
+    syncingRef.current = false;
+    setSyncing(false);
+    const remaining = getQueue();
+    setPendingOps(remaining);
+    if (!remaining.length) {
+      setSyncDone(true);
+      setTimeout(() => setSyncDone(false), 2500);
+    }
+  }, [token]);
+
+  syncRef.current = syncAll;
+
+  useEffect(() => {
+    const onOnline  = () => { setIsOnline(true);  syncRef.current?.(); };
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online',  onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
+  }, []);
+
+  // After initial data load, replay any queued ops
+  useEffect(() => {
+    if (!loading && isOnline && getQueue().length > 0) syncRef.current?.();
+  }, [loading]);
 
   function handleTabChange(newTab) {
     if (newTab === tab) return;
@@ -109,6 +195,12 @@ export default function App() {
       }
     } catch (e) {
       console.error(e);
+      if (!navigator.onLine) {
+        const pendingAdds = getQueue()
+          .filter(op => op.type === 'add_expense')
+          .map(op => ({ ...op.payload, id: op.tempId }));
+        if (pendingAdds.length) setExpenses(pendingAdds);
+      }
     } finally {
       setLoading(false);
     }
@@ -165,10 +257,19 @@ export default function App() {
   }
 
   async function handleAdd(expense) {
+    const payload = { ...expense, account_id: currentAccountId };
+    if (!navigator.onLine) {
+      const tempId = makeTempId();
+      const optimistic = { id: tempId, ...payload };
+      setExpenses(prev => [optimistic, ...prev]);
+      enqueue({ type: 'add_expense', tempId, payload });
+      setPendingOps(getQueue());
+      return optimistic;
+    }
     const res = await fetch('/api/expenses', {
       method: 'POST',
       headers: authHeaders(token),
-      body: JSON.stringify({ ...expense, account_id: currentAccountId }),
+      body: JSON.stringify(payload),
     });
     const newExp = await res.json();
     setExpenses(prev => [newExp, ...prev]);
@@ -177,10 +278,31 @@ export default function App() {
 
   async function handleDelete(id) {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    if (isTempId(id)) {
+      cancelByTempId(id);
+      setPendingOps(getQueue());
+      return;
+    }
+    if (!navigator.onLine) {
+      enqueue({ type: 'delete_expense', payload: { id } });
+      setPendingOps(getQueue());
+      return;
+    }
     await fetch(`/api/expenses/${id}`, { method: 'DELETE', headers: authHeaders(token) });
   }
 
   async function handleEdit(id, updates) {
+    if (isTempId(id)) {
+      updateQueuedPayload(id, updates);
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+      return { id, ...updates };
+    }
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    if (!navigator.onLine) {
+      enqueue({ type: 'edit_expense', payload: { id, ...updates } });
+      setPendingOps(getQueue());
+      return { id, ...updates };
+    }
     const res = await fetch(`/api/expenses/${id}`, {
       method: 'PUT',
       headers: authHeaders(token),
@@ -248,6 +370,18 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {(!isOnline || syncing || pendingOps.length > 0 || syncDone) && (
+        <div className={`sync-banner${syncDone ? ' sync-banner--done' : ''}`}>
+          {syncing
+            ? 'Syncing changes...'
+            : syncDone
+            ? 'All changes synced'
+            : pendingOps.length > 0
+            ? `${!isOnline ? 'Offline · ' : ''}${pendingOps.length} change${pendingOps.length !== 1 ? 's' : ''} queued`
+            : 'Offline'}
+        </div>
+      )}
 
       <main className="app-main">
         {tab === 'home' && (

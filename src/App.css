@@ -2193,3 +2193,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transition: background 0.12s;
 }
 .receipt-apply-btn:hover { background: var(--orange-hover); }
+
+/* ── Offline / sync banner ───────────────────────────── */
+.sync-banner {
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.2px;
+  background: #78350f;
+  color: #fef3c7;
+  flex-shrink: 0;
+}
+.sync-banner--done {
+  background: #14532d;
+  color: #dcfce7;
+}
