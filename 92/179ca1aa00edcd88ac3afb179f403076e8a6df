@@ -1,0 +1,37 @@
+index.html
+  s_7b7f95372f2e4e::t_5bcfe748a3ed59 11
+package.json
+  s_7b7f95372f2e4e::t_807502f45e6da9 33-34
+src/components/Budget.jsx
+  s_7b7f95372f2e4e::t_397a56b38a3439 266-281,283-297,308-316
+  s_7b7f95372f2e4e::t_f71d30bd5baa99 13
+src/App.jsx
+  s_7b7f95372f2e4e::t_816a6b5d7c39cc 1-2
+  s_7b7f95372f2e4e::t_bea6dee2c63389 45-50
+  s_7b7f95372f2e4e::t_dde1b58e0ff36e 198-203
+  s_7b7f95372f2e4e::t_801e5d42c97b01 260-268,272,281-290,295-305
+  s_7b7f95372f2e4e::t_8a21a68b494b12 374-385
+  s_7b7f95372f2e4e::t_beceffa3b40029 52-129
+src/offlineQueue.js
+  s_7b7f95372f2e4e::t_05f3a55c0fb522 1-41
+src/App.css
+  s_7b7f95372f2e4e::t_65040be3920d9c 2196-2211
+vite.config.js
+  s_7b7f95372f2e4e::t_f6a6e9912e28e0 3,6-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "92179ca1aa00edcd88ac3afb179f403076e8a6df",
+  "prompts": {},
+  "sessions": {
+    "s_7b7f95372f2e4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85d2a684-d3b8-450f-94ef-21ecc3a871b8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Brendan Lieu <brendanlieu05@gmail.com>"
+    }
+  }
+}
